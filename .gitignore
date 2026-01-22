@@ -1,9 +1,8 @@
+# Env (anywhere)
 .env
 .env.*
-
-# Backend env (explicit)
-backend/.env
-backend/.env.*
+**/.env
+**/.env.*
 
 # Node
 node_modules/
@@ -21,6 +20,23 @@ dist/
 build/
 out/
 coverage/
+
+# Expo / React Native
+.expo/
+.expo-shared/
+**/.expo/
+**/.expo-shared/
+
+# Metro / bundler caches
+.metro-cache/
+**/.metro-cache/
+
+# TypeScript
+*.tsbuildinfo
+
+# Turborepo / Next (if used)
+.turbo/
+.next/
 
 # IDE
 .vscode/
