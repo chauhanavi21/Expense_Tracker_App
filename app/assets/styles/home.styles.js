@@ -1,3 +1,4 @@
+// styles/home.styles.js
 import { StyleSheet } from "react-native";
 import { COLORS } from "../../constants/colors";
 
@@ -140,7 +141,7 @@ export const styles = StyleSheet.create({
     shadowOffset: {
       width: 0,
       height: 1,
-  },
+    },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
