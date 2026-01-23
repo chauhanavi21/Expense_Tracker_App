@@ -1,0 +1,1 @@
+export const API_URL = "https://eta-api-clt3.onrender.com/api";
