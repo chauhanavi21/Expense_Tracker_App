@@ -18,6 +18,27 @@ export default function SignUpScreen() {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
 
+  const getAuthErrorMessage = (err) => {
+    const first = err?.errors?.[0];
+    const code = first?.code;
+    const message = first?.message || "";
+
+    // Clerk "password pwned / breached" message customization
+    if (
+      code === "form_password_pwned" ||
+      code === "form_password_compromised" ||
+      message.toLowerCase().includes("password has been found in an online data breach")
+    ) {
+      return "This password was found in a data breach. Please use a stronger, unique password.";
+    }
+
+    if (code === "form_identifier_exists") {
+      return "That email address is already in use. Please try another.";
+    }
+
+    return "An error occurred. Please try again.";
+  };
+
   const onSignUpPress = async () => {
     if (!isLoaded) return;
 
@@ -31,11 +52,7 @@ export default function SignUpScreen() {
 
       setPendingVerification(true);
     } catch (err) {
-      if (err.errors?.[0]?.code === "form_identifier_exists") {
-        setError("That email address is already in use. Please try another.");
-      } else {
-        setError("An error occurred. Please try again.");
-      }
+      setError(getAuthErrorMessage(err));
       console.log(err);
     }
   };
