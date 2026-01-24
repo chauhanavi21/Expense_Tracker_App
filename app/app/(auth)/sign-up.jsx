@@ -12,6 +12,7 @@ export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp();
   const router = useRouter();
 
+  const [name, setName] = useState("");
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
   const [pendingVerification, setPendingVerification] = useState(false);
@@ -43,9 +44,16 @@ export default function SignUpScreen() {
     if (!isLoaded) return;
 
     try {
+      const trimmedName = name.trim();
+      const parts = trimmedName.split(/\s+/).filter(Boolean);
+      const firstName = parts[0];
+      const lastName = parts.slice(1).join(" ") || undefined;
+
       await signUp.create({
         emailAddress,
         password,
+        ...(firstName ? { firstName } : {}),
+        ...(lastName ? { lastName } : {}),
       });
 
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
@@ -128,6 +136,15 @@ export default function SignUpScreen() {
             </TouchableOpacity>
           </View>
         ) : null}
+
+        <TextInput
+          style={[styles.input, error && styles.errorInput]}
+          autoCapitalize="words"
+          value={name}
+          placeholder="Enter name"
+          placeholderTextColor="#9A8478"
+          onChangeText={(value) => setName(value)}
+        />
 
         <TextInput
           style={[styles.input, error && styles.errorInput]}

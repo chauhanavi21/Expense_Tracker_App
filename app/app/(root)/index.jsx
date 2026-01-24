@@ -16,9 +16,8 @@ export default function Page() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
 
-  const { transactions, summary, isLoading, loadData, deleteTransaction } = useTransactions(
-    user.id
-  );
+  const userId = user?.id;
+  const { transactions, summary, isLoading, loadData, deleteTransaction } = useTransactions(userId);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -28,7 +27,7 @@ export default function Page() {
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+  }, [loadData, userId]);
 
   const handleDelete = (id) => {
     Alert.alert("Delete Transaction", "Are you sure you want to delete this transaction?", [
@@ -54,7 +53,9 @@ export default function Page() {
             <View style={styles.welcomeContainer}>
               <Text style={styles.welcomeText}>Welcome,</Text>
               <Text style={styles.usernameText}>
-                {user?.emailAddresses[0]?.emailAddress.split("@")[0]}
+                {user?.fullName ||
+                  user?.firstName ||
+                  user?.emailAddresses?.[0]?.emailAddress?.split("@")?.[0]}
               </Text>
             </View>
           </View>
@@ -64,7 +65,9 @@ export default function Page() {
               <Ionicons name="add" size={20} color="#FFF" />
               <Text style={styles.addButtonText}>Add</Text>
             </TouchableOpacity>
-            <SignOutButton />
+            <TouchableOpacity style={styles.logoutButton} onPress={() => router.push("/menu")}>
+              <Ionicons name="menu-outline" size={22} color="#111" />
+            </TouchableOpacity>
           </View>
         </View>
 
