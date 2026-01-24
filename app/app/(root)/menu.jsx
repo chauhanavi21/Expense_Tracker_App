@@ -1,9 +1,10 @@
 import { useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { SignOutButton } from "../../components/SignOutButton";
+import { API_URL } from "../../constants/api";
 
 const formatSince = (value) => {
   if (!value) return "";
@@ -20,6 +21,37 @@ export default function MenuScreen() {
     user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "User";
   const email = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress;
   const userSince = formatSince(user?.createdAt);
+
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you sure you want to delete your account? This action cannot be undone and will delete all your transactions.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // First delete all user's transactions from the database
+              await fetch(`${API_URL}/transactions/user/${user.id}`, {
+                method: "DELETE",
+              });
+
+              // Then delete the Clerk account
+              await user.delete();
+
+              Alert.alert("Success", "Your account has been deleted.");
+              router.replace("/sign-in");
+            } catch (error) {
+              console.error("Error deleting account:", error);
+              Alert.alert("Error", "Failed to delete account. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -52,6 +84,14 @@ export default function MenuScreen() {
 
       <View style={styles.footer}>
         <SignOutButton />
+      </View>
+
+      <View style={styles.dangerZone}>
+        <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
+          <Ionicons name="trash-outline" size={20} color={COLORS.white} />
+          <Text style={styles.deleteButtonText}>Delete Account</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -110,6 +150,34 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: 16,
     alignItems: "flex-end",
+  },
+  dangerZone: {
+    marginTop: 24,
+    padding: 16,
+    backgroundColor: "#FFF5F5",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FEE2E2",
+  },
+  dangerZoneTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.expense,
+    marginBottom: 12,
+  },
+  deleteButton: {
+    backgroundColor: COLORS.expense,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  deleteButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 
