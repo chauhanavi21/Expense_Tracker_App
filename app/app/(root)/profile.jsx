@@ -1,6 +1,7 @@
 import { useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 
@@ -20,6 +21,43 @@ export default function ProfileScreen() {
   const email = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress;
   const userSince = formatSince(user?.createdAt);
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState(name);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!editedName.trim()) {
+      Alert.alert("Error", "Name cannot be empty");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const trimmedName = editedName.trim();
+      const parts = trimmedName.split(/\s+/).filter(Boolean);
+      const firstName = parts[0];
+      const lastName = parts.slice(1).join(" ") || undefined;
+
+      await user.update({
+        firstName,
+        ...(lastName ? { lastName } : {}),
+      });
+
+      setIsEditing(false);
+      Alert.alert("Success", "Name updated successfully");
+    } catch (error) {
+      console.error("Error updating name:", error);
+      Alert.alert("Error", "Failed to update name. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditedName(name);
+    setIsEditing(false);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -34,7 +72,41 @@ export default function ProfileScreen() {
         <View style={styles.avatar}>
           <Ionicons name="person" size={48} color={COLORS.primary} />
         </View>
-        <Text style={styles.nameText}>{name}</Text>
+        {isEditing ? (
+          <View style={styles.editContainer}>
+            <TextInput
+              style={styles.nameInput}
+              value={editedName}
+              onChangeText={setEditedName}
+              autoCapitalize="words"
+              placeholder="Enter your name"
+              placeholderTextColor={COLORS.textLight}
+            />
+            <View style={styles.editButtons}>
+              <TouchableOpacity
+                style={[styles.editButton, styles.cancelButton]}
+                onPress={handleCancel}
+                disabled={isSaving}
+              >
+                <Ionicons name="close" size={20} color={COLORS.text} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.editButton, styles.saveButton]}
+                onPress={handleSave}
+                disabled={isSaving}
+              >
+                <Ionicons name="checkmark" size={20} color={COLORS.white} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.nameContainer}>
+            <Text style={styles.nameText}>{name}</Text>
+            <TouchableOpacity style={styles.editIconButton} onPress={() => setIsEditing(true)}>
+              <Ionicons name="pencil" size={18} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       <View style={styles.card}>
@@ -110,10 +182,64 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  nameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   nameText: {
     fontSize: 24,
     fontWeight: "700",
     color: COLORS.text,
+  },
+  editIconButton: {
+    padding: 6,
+    borderRadius: 16,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  editContainer: {
+    width: "100%",
+    alignItems: "center",
+    gap: 12,
+  },
+  nameInput: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: COLORS.text,
+    backgroundColor: COLORS.card,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    minWidth: 250,
+    textAlign: "center",
+  },
+  editButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  editButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  cancelButton: {
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  saveButton: {
+    backgroundColor: COLORS.primary,
   },
   card: {
     backgroundColor: COLORS.card,
