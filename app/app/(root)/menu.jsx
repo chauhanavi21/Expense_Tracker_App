@@ -1,9 +1,8 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useUser, useClerk } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
-import { SignOutButton } from "../../components/SignOutButton";
 import { API_URL } from "../../constants/api";
 
 const formatSince = (value) => {
@@ -16,11 +15,19 @@ const formatSince = (value) => {
 export default function MenuScreen() {
   const router = useRouter();
   const { user } = useUser();
+  const { signOut } = useClerk();
 
   const name =
     user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "User";
   const email = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress;
   const userSince = formatSince(user?.createdAt);
+
+  const handleSignOut = async () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", style: "destructive", onPress: signOut },
+    ]);
+  };
 
   const handleDeleteAccount = async () => {
     Alert.alert(
@@ -57,34 +64,27 @@ export default function MenuScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+          <Ionicons name="close" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Menu</Text>
-        <View style={{ width: 42 }} />
+        <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
+          <Ionicons name="log-out-outline" size={22} color={COLORS.text} />
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Profile</Text>
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Name</Text>
-          <Text style={styles.value}>{name}</Text>
-        </View>
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>{email || "-"}</Text>
-        </View>
-
-        <View style={styles.row}>
-          <Text style={styles.label}>User since</Text>
-          <Text style={styles.value}>{userSince || "-"}</Text>
-        </View>
+      <View style={styles.menuSection}>
+        <TouchableOpacity style={styles.menuItem} onPress={() => router.push("/profile")}>
+          <View style={styles.menuItemLeft}>
+            <View style={styles.menuIconContainer}>
+              <Ionicons name="person-outline" size={24} color={COLORS.primary} />
+            </View>
+            <Text style={styles.menuItemText}>Profile</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.footer}>
-        <SignOutButton />
-      </View>
+      <View style={styles.spacer} />
 
       <View style={styles.dangerZone}>
         <Text style={styles.dangerZoneTitle}>Danger Zone</Text>
@@ -107,52 +107,75 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: 24,
+    paddingTop: 8,
   },
   iconButton: {
     padding: 10,
     borderRadius: 20,
     backgroundColor: COLORS.card,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  logoutButton: {
+    padding: 10,
+    borderRadius: 20,
+    backgroundColor: COLORS.card,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   title: {
     fontSize: 20,
     fontWeight: "700",
     color: COLORS.text,
   },
-  card: {
+  menuSection: {
+    gap: 12,
+  },
+  menuItem: {
     backgroundColor: COLORS.card,
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     borderWidth: 1,
     borderColor: COLORS.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 12,
+  menuItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
-  row: {
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+  menuIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.background,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  label: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginBottom: 4,
-  },
-  value: {
+  menuItemText: {
     fontSize: 16,
     fontWeight: "600",
     color: COLORS.text,
   },
-  footer: {
-    marginTop: 16,
-    alignItems: "flex-end",
+  spacer: {
+    flex: 1,
   },
   dangerZone: {
-    marginTop: 24,
+    marginTop: 16,
     padding: 16,
     backgroundColor: "#FFF5F5",
     borderRadius: 12,
