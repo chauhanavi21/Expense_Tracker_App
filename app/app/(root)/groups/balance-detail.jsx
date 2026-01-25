@@ -53,6 +53,45 @@ export default function BalanceDetailScreen() {
     }
   };
 
+  const handleSettleUp = (toUserId) => {
+    Alert.alert(
+      "Settle Up",
+      `Mark all debts to ${toUserId} as paid?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Settle Up",
+          style: "default",
+          onPress: async () => {
+            try {
+              const response = await fetch(`${API_URL}/groups/settle`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  groupId: parseInt(groupId),
+                  fromUserId: user.id,
+                  toUserId,
+                }),
+              });
+
+              const data = await response.json();
+
+              if (response.ok) {
+                Alert.alert("Success", "Debts settled successfully!");
+                loadBalanceData(); // Reload balance
+              } else {
+                Alert.alert("Error", data.message || "Failed to settle debts");
+              }
+            } catch (error) {
+              console.error("Error settling up:", error);
+              Alert.alert("Error", "Failed to settle debts");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (isLoading) return <PageLoader />;
 
   const currencySymbol = group?.currency === "USD" ? "$" : "₹";
@@ -167,12 +206,21 @@ export default function BalanceDetailScreen() {
                   <View style={styles.personIcon}>
                     <Ionicons name="person" size={20} color={COLORS.expense} />
                   </View>
-                  <Text style={styles.personName}>{item.userId}</Text>
+                  <View>
+                    <Text style={styles.personName}>{item.userId}</Text>
+                    <Text style={styles.amountNegative}>
+                      {currencySymbol}
+                      {item.amount.toFixed(2)}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.amountNegative}>
-                  {currencySymbol}
-                  {item.amount.toFixed(2)}
-                </Text>
+                <TouchableOpacity
+                  style={styles.settleButton}
+                  onPress={() => handleSettleUp(item.userId)}
+                >
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.white} />
+                  <Text style={styles.settleButtonText}>Settle</Text>
+                </TouchableOpacity>
               </View>
             ))}
           </View>
@@ -231,7 +279,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 50,
+    paddingTop: 12,
     paddingBottom: 16,
   },
   backButton: {
@@ -389,5 +437,19 @@ const styles = StyleSheet.create({
   memberDate: {
     fontSize: 12,
     color: COLORS.textLight,
+  },
+  settleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  settleButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: COLORS.white,
   },
 });

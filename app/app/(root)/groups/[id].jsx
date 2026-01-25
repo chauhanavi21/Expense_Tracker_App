@@ -79,7 +79,12 @@ export default function GroupDetailScreen() {
         <Text style={styles.headerTitle} numberOfLines={1}>
           {group?.name}
         </Text>
-        <View style={{ width: 44 }} />
+        <TouchableOpacity
+          style={styles.shareButton}
+          onPress={() => router.push(`/groups/share-group?groupId=${id}`)}
+        >
+          <Ionicons name="share-outline" size={22} color={COLORS.text} />
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -233,6 +238,16 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
+  shareButton: {
+    padding: 10,
+    borderRadius: 20,
+    backgroundColor: COLORS.card,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
@@ -243,7 +258,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   infoCard: {
     backgroundColor: COLORS.card,

@@ -8,6 +8,7 @@ export const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+    paddingTop: 12,
     paddingBottom: 0,
   },
   header: {
@@ -258,6 +259,6 @@ export const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   transactionsListContent: {
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
 });
