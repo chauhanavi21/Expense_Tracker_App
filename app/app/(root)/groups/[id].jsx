@@ -137,7 +137,7 @@ export default function GroupDetailScreen() {
                     {balance.owesMe.map((item, index) => (
                       <View key={`owes-${index}`} style={styles.breakdownItem}>
                         <Text style={styles.breakdownLabel}>
-                          {item.userId} owes you
+                          {item.userName || item.userId} owes you
                         </Text>
                         <Text style={styles.breakdownPositive}>
                           +{group?.currency === "USD" ? "$" : "₹"}
@@ -148,7 +148,7 @@ export default function GroupDetailScreen() {
                     {balance.iOwe.map((item, index) => (
                       <View key={`iowe-${index}`} style={styles.breakdownItem}>
                         <Text style={styles.breakdownLabel}>
-                          You owe {item.userId}
+                          You owe {item.userName || item.userId}
                         </Text>
                         <Text style={styles.breakdownNegative}>
                           -{group?.currency === "USD" ? "$" : "₹"}

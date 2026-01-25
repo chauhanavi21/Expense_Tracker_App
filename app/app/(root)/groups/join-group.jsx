@@ -30,12 +30,15 @@ export default function JoinGroupScreen() {
 
     setIsLoading(true);
     try {
+      const userName = user.fullName || user.firstName || user.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "User";
+      
       const response = await fetch(`${API_URL}/groups/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code: code.trim().toUpperCase(),
           userId: user.id,
+          userName: userName,
         }),
       });
 

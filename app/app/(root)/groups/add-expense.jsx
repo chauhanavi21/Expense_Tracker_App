@@ -252,7 +252,7 @@ export default function AddGroupExpenseScreen() {
                 )}
               </View>
               <Text style={styles.memberName}>
-                {member.user_id === user.id ? "You" : member.user_id}
+                {member.user_id === user.id ? "You" : (member.user_name || member.user_id)}
               </Text>
             </View>
             {splitType === "custom" && selectedMembers.includes(member.user_id) && (

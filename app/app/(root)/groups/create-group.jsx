@@ -30,12 +30,15 @@ export default function CreateGroupScreen() {
 
     setIsLoading(true);
     try {
+      const userName = user.fullName || user.firstName || user.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "User";
+      
       const response = await fetch(`${API_URL}/groups`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
           userId: user.id,
+          userName: userName,
           currency: "USD",
         }),
       });

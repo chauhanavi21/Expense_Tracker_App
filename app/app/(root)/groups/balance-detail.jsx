@@ -185,7 +185,7 @@ export default function BalanceDetailScreen() {
                   <View style={styles.personIcon}>
                     <Ionicons name="person" size={20} color={COLORS.income} />
                   </View>
-                  <Text style={styles.personName}>{item.userId}</Text>
+                  <Text style={styles.personName}>{item.userName || item.userId}</Text>
                 </View>
                 <Text style={styles.amountPositive}>
                   +{currencySymbol}
@@ -210,7 +210,7 @@ export default function BalanceDetailScreen() {
                     <Ionicons name="person" size={20} color={COLORS.expense} />
                   </View>
                   <View>
-                    <Text style={styles.personName}>{item.userId}</Text>
+                    <Text style={styles.personName}>{item.userName || item.userId}</Text>
                     <Text style={styles.amountNegative}>
                       {currencySymbol}
                       {item.amount.toFixed(2)}
@@ -258,7 +258,7 @@ export default function BalanceDetailScreen() {
                   />
                 </View>
                 <Text style={styles.personName}>
-                  {member.user_id === user?.id ? "You" : member.user_id}
+                  {member.user_id === user?.id ? "You" : (member.user_name || member.user_id)}
                 </Text>
               </View>
               <Text style={styles.memberDate}>

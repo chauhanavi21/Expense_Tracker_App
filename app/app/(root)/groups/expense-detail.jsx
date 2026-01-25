@@ -124,7 +124,7 @@ export default function ExpenseDetailScreen() {
                     />
                   </View>
                   <Text style={[styles.splitName, isCurrentUser && styles.splitNameHighlight]}>
-                    {isCurrentUser ? "You" : split.user_id}
+                    {isCurrentUser ? "You" : (split.user_name || split.user_id)}
                   </Text>
                 </View>
                 <Text style={[styles.splitAmount, isCurrentUser && styles.splitAmountHighlight]}>
@@ -175,7 +175,7 @@ export default function ExpenseDetailScreen() {
                 <>
                   <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>
-                      Paid by {expense?.paid_by_user_id}
+                      Paid by {expense?.paid_by_user_name || expense?.paid_by_user_id}
                     </Text>
                     <Text style={styles.summaryValue}>
                       {currencySymbol}
