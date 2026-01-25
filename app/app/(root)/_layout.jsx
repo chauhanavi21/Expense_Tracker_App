@@ -3,13 +3,11 @@ import { Redirect } from "expo-router";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
+import { Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export default function Layout() {
-  const { isSignedIn, isLoaded } = useUser();
-
-  if (!isLoaded) return null;
-
-  if (!isSignedIn) return <Redirect href={"/sign-in"} />;
+function TabsLayout() {
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -21,14 +19,15 @@ export default function Layout() {
           backgroundColor: COLORS.card,
           borderTopWidth: 1,
           borderTopColor: COLORS.border,
-          height: 70,
-          paddingBottom: 10,
-          paddingTop: 10,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom,
+          paddingTop: 8,
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: "600",
         },
+        tabBarHideOnKeyboard: true,
       }}
     >
       <Tabs.Screen
@@ -65,4 +64,14 @@ export default function Layout() {
       />
     </Tabs>
   );
+}
+
+export default function Layout() {
+  const { isSignedIn, isLoaded } = useUser();
+
+  if (!isLoaded) return null;
+
+  if (!isSignedIn) return <Redirect href={"/sign-in"} />;
+
+  return <TabsLayout />;
 }

@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform, StatusBar } from "react-native";
 import { COLORS } from "../../constants/colors";
 
 export const styles = StyleSheet.create({
@@ -259,6 +259,6 @@ export const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   transactionsListContent: {
-    paddingBottom: 100,
+    paddingBottom: 80,
   },
 });
