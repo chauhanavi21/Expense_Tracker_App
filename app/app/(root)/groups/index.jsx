@@ -1,6 +1,6 @@
 import { useUser } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useEffect, useState, useCallback } from "react";
 import {
   Alert,
   FlatList,
@@ -45,6 +45,15 @@ export default function GroupsScreen() {
   useEffect(() => {
     loadGroups();
   }, [user?.id]);
+
+  // Auto-refresh when screen comes into focus (after creating/joining group)
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        loadGroups();
+      }
+    }, [user?.id])
+  );
 
   if (isLoading && !refreshing) return <PageLoader />;
 
@@ -124,7 +133,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 16,
   },
   headerLeft: {

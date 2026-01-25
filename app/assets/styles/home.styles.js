@@ -8,7 +8,7 @@ export const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 0,
   },
   header: {
@@ -17,7 +17,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
     paddingHorizontal: 0,
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   headerLeft: {
     flex: 1,

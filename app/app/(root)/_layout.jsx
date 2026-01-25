@@ -21,9 +21,9 @@ export default function Layout() {
           backgroundColor: COLORS.card,
           borderTopWidth: 1,
           borderTopColor: COLORS.border,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          height: 70,
+          paddingBottom: 10,
+          paddingTop: 10,
         },
         tabBarLabelStyle: {
           fontSize: 12,
