@@ -8,6 +8,8 @@ export default function GroupsLayout() {
       <Stack.Screen name="join-group" />
       <Stack.Screen name="[id]" />
       <Stack.Screen name="add-expense" />
+      <Stack.Screen name="expense-detail" />
+      <Stack.Screen name="balance-detail" />
     </Stack>
   );
 }

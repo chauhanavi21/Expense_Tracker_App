@@ -99,7 +99,10 @@ export default function GroupDetailScreen() {
 
             {/* Balance Summary */}
             {balance && (
-              <View style={styles.balanceCard}>
+              <TouchableOpacity
+                style={styles.balanceCard}
+                onPress={() => router.push(`/groups/balance-detail?groupId=${id}`)}
+              >
                 <Text style={styles.balanceTitle}>Your Balance</Text>
                 <Text
                   style={[
@@ -147,7 +150,12 @@ export default function GroupDetailScreen() {
                     ))}
                   </View>
                 )}
-              </View>
+
+                <View style={styles.viewDetailsRow}>
+                  <Text style={styles.viewDetailsText}>View Full Details</Text>
+                  <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+                </View>
+              </TouchableOpacity>
             )}
 
             {/* Expenses Header */}
@@ -166,7 +174,12 @@ export default function GroupDetailScreen() {
         data={expenses}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-          <View style={styles.expenseCard}>
+          <TouchableOpacity
+            style={styles.expenseCard}
+            onPress={() =>
+              router.push(`/groups/expense-detail?expenseId=${item.id}&groupId=${id}`)
+            }
+          >
             <View style={styles.expenseLeft}>
               <Text style={styles.expenseDescription}>{item.description}</Text>
               <Text style={styles.expenseDate}>
@@ -182,7 +195,7 @@ export default function GroupDetailScreen() {
                 {item.paid_by_user_id === user?.id ? "You paid" : "Paid by other"}
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -309,6 +322,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     color: COLORS.expense,
+  },
+  viewDetailsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  viewDetailsText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: COLORS.primary,
   },
   sectionHeader: {
     flexDirection: "row",
