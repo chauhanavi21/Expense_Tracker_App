@@ -132,9 +132,9 @@ export default function GroupDetailScreen() {
                 </Text>
 
                 {/* Breakdown */}
-                {(balance.owesMe.length > 0 || balance.iOwe.length > 0) && (
+                {(balance.owesMe?.length > 0 || balance.iOwe?.length > 0) && (
                   <View style={styles.breakdown}>
-                    {balance.owesMe.map((item, index) => (
+                    {balance.owesMe?.map((item, index) => (
                       <View key={`owes-${index}`} style={styles.breakdownItem}>
                         <Text style={styles.breakdownLabel}>
                           {item.userName || item.userId} owes you
@@ -145,7 +145,7 @@ export default function GroupDetailScreen() {
                         </Text>
                       </View>
                     ))}
-                    {balance.iOwe.map((item, index) => (
+                    {balance.iOwe?.map((item, index) => (
                       <View key={`iowe-${index}`} style={styles.breakdownItem}>
                         <Text style={styles.breakdownLabel}>
                           You owe {item.userName || item.userId}
@@ -200,7 +200,7 @@ export default function GroupDetailScreen() {
                 {parseFloat(item.amount).toFixed(2)}
               </Text>
               <Text style={styles.expensePaidBy}>
-                {item.paid_by_user_id === user?.id ? "You paid" : "Paid by other"}
+                Paid by {item.paid_by_user_id === user?.id ? "You" : (item.paid_by_user_name || item.paid_by_user_id)}
               </Text>
             </View>
           </TouchableOpacity>
