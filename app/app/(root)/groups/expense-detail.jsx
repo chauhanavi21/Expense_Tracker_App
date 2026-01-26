@@ -100,7 +100,7 @@ export default function ExpenseDetailScreen() {
             <Text style={styles.paidByTitle}>Paid By</Text>
           </View>
           <Text style={styles.paidByName}>
-            {paidByYou ? "You" : expense?.paid_by_user_id}
+            {paidByYou ? "You" : (expense?.paid_by_user_name || expense?.paid_by_user_id)}
           </Text>
         </View>
 
