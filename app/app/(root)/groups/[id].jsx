@@ -65,6 +65,57 @@ export default function GroupDetailScreen() {
     setRefreshing(false);
   };
 
+  const handleLeaveGroup = () => {
+    Alert.alert(
+      "Leave Group",
+      "Are you sure you want to leave this group? If you have unsettled expenses, you'll need to settle them first.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Leave",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const response = await fetch(`${API_URL}/groups/leave`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  groupId: id,
+                  userId: user.id,
+                }),
+              });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                if (data.hasDebts) {
+                  Alert.alert("Cannot Leave", data.message);
+                } else {
+                  Alert.alert("Error", data.message || "Failed to leave group");
+                }
+                return;
+              }
+
+              Alert.alert(
+                "Success",
+                data.message,
+                [
+                  {
+                    text: "OK",
+                    onPress: () => router.replace("/groups"),
+                  },
+                ]
+              );
+            } catch (error) {
+              console.error("Error leaving group:", error);
+              Alert.alert("Error", "Failed to leave group");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   useEffect(() => {
     loadGroupData();
   }, [id, user?.id]);
@@ -103,6 +154,12 @@ export default function GroupDetailScreen() {
                 <Text style={styles.infoLabel}>Members</Text>
                 <Text style={styles.infoValue}>{members.length}</Text>
               </View>
+              
+              {/* Leave Group Button */}
+              <TouchableOpacity style={styles.leaveButton} onPress={handleLeaveGroup}>
+                <Ionicons name="exit-outline" size={18} color={COLORS.error} />
+                <Text style={styles.leaveButtonText}>Leave Group</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Balance Summary */}
@@ -284,6 +341,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: COLORS.text,
+  },
+  leaveButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.error,
+    backgroundColor: "#FFF5F5",
+  },
+  leaveButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.error,
   },
   balanceCard: {
     backgroundColor: COLORS.card,

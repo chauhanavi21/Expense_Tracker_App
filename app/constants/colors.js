@@ -10,6 +10,7 @@ const coffeeTheme = {
     income: "#2ECC71",
     card: "#FFFFFF",
     shadow: "#000000",
+    error: "#E74C3C",
   };
   
   const forestTheme = {
@@ -23,6 +24,7 @@ const coffeeTheme = {
     income: "#388E3C",
     card: "#FFFFFF",
     shadow: "#000000",
+    error: "#C62828",
   };
   
   const purpleTheme = {
@@ -36,6 +38,7 @@ const coffeeTheme = {
     income: "#388E3C",
     card: "#FFFFFF",
     shadow: "#000000",
+    error: "#D32F2F",
   };
   
   const oceanTheme = {
@@ -49,6 +52,7 @@ const coffeeTheme = {
     income: "#26A69A",
     card: "#FFFFFF",
     shadow: "#000000",
+    error: "#EF5350",
   };
   
   export const THEMES = {

@@ -49,7 +49,8 @@ export async function createGroup(req, res) {
     await sql`
       INSERT INTO group_members(group_id, user_id, user_name)
       VALUES (${group[0].id}, ${userId}, ${userName || 'User'})
-      ON CONFLICT (group_id, user_id) DO UPDATE SET user_name = ${userName || 'User'}
+      ON CONFLICT (group_id, user_id) 
+      DO UPDATE SET user_name = COALESCE(${userName}, group_members.user_name, 'User')
     `;
 
     res.status(201).json(group[0]);
@@ -124,7 +125,10 @@ export async function getGroupMembers(req, res) {
     const { groupId } = req.params;
 
     const members = await sql`
-      SELECT user_id, user_name, joined_at
+      SELECT 
+        user_id, 
+        COALESCE(user_name, 'User') as user_name, 
+        joined_at
       FROM group_members
       WHERE group_id = ${groupId}
       ORDER BY joined_at ASC
@@ -206,9 +210,13 @@ export async function getGroupExpenses(req, res) {
     const { groupId } = req.params;
 
     const expenses = await sql`
-      SELECT * FROM group_expenses
-      WHERE group_id = ${groupId}
-      ORDER BY created_at DESC
+      SELECT 
+        ge.*,
+        COALESCE(gm.user_name, ge.paid_by_user_id) as paid_by_user_name
+      FROM group_expenses ge
+      LEFT JOIN group_members gm ON ge.paid_by_user_id = gm.user_id AND gm.group_id = ge.group_id
+      WHERE ge.group_id = ${groupId}
+      ORDER BY ge.created_at DESC
     `;
 
     res.status(200).json(expenses);
@@ -226,13 +234,13 @@ export async function getExpenseSplits(req, res) {
     const splits = await sql`
       SELECT 
         es.*,
-        gm.user_name,
+        COALESCE(gm.user_name, es.user_id) as user_name,
         ge.group_id
       FROM expense_splits es
       INNER JOIN group_expenses ge ON es.expense_id = ge.id
       LEFT JOIN group_members gm ON es.user_id = gm.user_id AND gm.group_id = ge.group_id
       WHERE es.expense_id = ${expenseId}
-      ORDER BY gm.user_name
+      ORDER BY COALESCE(gm.user_name, es.user_id)
     `;
 
     res.status(200).json(splits);
@@ -249,7 +257,10 @@ export async function getGroupBalance(req, res) {
 
     // Get detailed breakdown - others who owe the user
     const owesMe = await sql`
-      SELECT es.user_id, gm.user_name, SUM(es.amount_owed) as total
+      SELECT 
+        es.user_id, 
+        COALESCE(gm.user_name, es.user_id) as user_name, 
+        SUM(es.amount_owed) as total
       FROM expense_splits es
       INNER JOIN group_expenses ge ON es.expense_id = ge.id
       LEFT JOIN group_members gm ON es.user_id = gm.user_id AND gm.group_id = ${groupId}
@@ -262,7 +273,10 @@ export async function getGroupBalance(req, res) {
 
     // Get detailed breakdown - what user owes others
     const iOwe = await sql`
-      SELECT ge.paid_by_user_id as user_id, gm.user_name, SUM(es.amount_owed) as total
+      SELECT 
+        ge.paid_by_user_id as user_id, 
+        COALESCE(gm.user_name, ge.paid_by_user_id) as user_name, 
+        SUM(es.amount_owed) as total
       FROM expense_splits es
       INNER JOIN group_expenses ge ON es.expense_id = ge.id
       LEFT JOIN group_members gm ON ge.paid_by_user_id = gm.user_id AND gm.group_id = ${groupId}
@@ -338,6 +352,72 @@ export async function settleUp(req, res) {
     });
   } catch (error) {
     console.log("Error settling up", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+// Leave a group
+export async function leaveGroup(req, res) {
+  try {
+    const { groupId, userId } = req.body;
+
+    if (!groupId || !userId) {
+      return res.status(400).json({ message: "Group ID and User ID are required" });
+    }
+
+    // Check if user is a member
+    const member = await sql`
+      SELECT * FROM group_members 
+      WHERE group_id = ${groupId} AND user_id = ${userId}
+    `;
+
+    if (member.length === 0) {
+      return res.status(404).json({ message: "You are not a member of this group" });
+    }
+
+    // Check for unsettled debts
+    const unsettledDebts = await sql`
+      SELECT es.*
+      FROM expense_splits es
+      INNER JOIN group_expenses ge ON es.expense_id = ge.id
+      WHERE ge.group_id = ${groupId}
+        AND (es.user_id = ${userId} OR ge.paid_by_user_id = ${userId})
+        AND es.is_settled = false
+    `;
+
+    if (unsettledDebts.length > 0) {
+      return res.status(400).json({ 
+        message: "You have unsettled expenses in this group. Please settle up before leaving.",
+        hasDebts: true
+      });
+    }
+
+    // Remove user from group
+    await sql`
+      DELETE FROM group_members 
+      WHERE group_id = ${groupId} AND user_id = ${userId}
+    `;
+
+    // Check if group is now empty
+    const remainingMembers = await sql`
+      SELECT * FROM group_members WHERE group_id = ${groupId}
+    `;
+
+    // If no members left, delete the group
+    if (remainingMembers.length === 0) {
+      await sql`DELETE FROM groups WHERE id = ${groupId}`;
+      return res.status(200).json({ 
+        message: "Successfully left group. Group was deleted as you were the last member.",
+        groupDeleted: true
+      });
+    }
+
+    res.status(200).json({ 
+      message: "Successfully left group",
+      groupDeleted: false
+    });
+  } catch (error) {
+    console.log("Error leaving group", error);
     res.status(500).json({ message: "Internal server error" });
   }
 }
