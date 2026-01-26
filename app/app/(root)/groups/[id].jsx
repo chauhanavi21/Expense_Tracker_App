@@ -1,6 +1,6 @@
 import { useUser } from "@clerk/clerk-expo";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { useEffect, useState, useCallback } from "react";
 import {
   Alert,
   FlatList,
@@ -119,6 +119,15 @@ export default function GroupDetailScreen() {
   useEffect(() => {
     loadGroupData();
   }, [id, user?.id]);
+
+  // Auto-refresh when screen comes into focus (after adding expense)
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id && id) {
+        loadGroupData();
+      }
+    }, [user?.id, id])
+  );
 
   if (isLoading && !refreshing) return <PageLoader />;
 
@@ -285,7 +294,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 0,
     paddingBottom: 16,
   },
   backButton: {

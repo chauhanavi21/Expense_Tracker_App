@@ -1,6 +1,6 @@
 import { useUser } from "@clerk/clerk-expo";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { useEffect, useState, useCallback } from "react";
 import {
   Alert,
   ScrollView,
@@ -29,6 +29,15 @@ export default function BalanceDetailScreen() {
   useEffect(() => {
     loadBalanceData();
   }, [groupId]);
+
+  // Auto-refresh when screen comes into focus (after settling up)
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id && groupId) {
+        loadBalanceData();
+      }
+    }, [user?.id, groupId])
+  );
 
   const loadBalanceData = async () => {
     if (!user?.id) return;
@@ -284,7 +293,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 0,
     paddingBottom: 16,
   },
   backButton: {
