@@ -92,7 +92,7 @@ export default function GroupsScreen() {
       </View>
 
       {/* Groups List */}
-      {groups.length === 0 ? (
+      {!Array.isArray(groups) || groups.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="people-outline" size={80} color={COLORS.textLight} />
           <Text style={styles.emptyTitle}>No Groups Yet</Text>

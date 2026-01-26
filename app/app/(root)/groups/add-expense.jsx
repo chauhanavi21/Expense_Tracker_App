@@ -234,7 +234,7 @@ export default function AddGroupExpenseScreen() {
 
         {/* Participants */}
         <Text style={styles.label}>Who participated?</Text>
-        {members.map((member) => (
+        {Array.isArray(members) && members.map((member) => (
           <TouchableOpacity
             key={member.user_id}
             style={styles.memberRow}
