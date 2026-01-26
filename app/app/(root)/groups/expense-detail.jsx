@@ -105,39 +105,41 @@ export default function ExpenseDetailScreen() {
         </View>
 
         {/* Split Details */}
-        <View style={styles.splitCard}>
-          <View style={styles.splitHeader}>
-            <Ionicons name="people-outline" size={20} color={COLORS.primary} />
-            <Text style={styles.splitTitle}>Split Between</Text>
-          </View>
+        {Array.isArray(splits) && splits.length > 0 && (
+          <View style={styles.splitCard}>
+            <View style={styles.splitHeader}>
+              <Ionicons name="people-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.splitTitle}>Split Between</Text>
+            </View>
 
-          {splits.map((split, index) => {
-            const isCurrentUser = split.user_id === user?.id;
-            return (
-              <View key={split.id || index} style={styles.splitRow}>
-                <View style={styles.splitLeft}>
-                  <View style={styles.userIcon}>
-                    <Ionicons
-                      name={isCurrentUser ? "person" : "person-outline"}
-                      size={20}
-                      color={isCurrentUser ? COLORS.primary : COLORS.textLight}
-                    />
+            {splits.map((split, index) => {
+              const isCurrentUser = split.user_id === user?.id;
+              return (
+                <View key={split.id || index} style={styles.splitRow}>
+                  <View style={styles.splitLeft}>
+                    <View style={styles.userIcon}>
+                      <Ionicons
+                        name={isCurrentUser ? "person" : "person-outline"}
+                        size={20}
+                        color={isCurrentUser ? COLORS.primary : COLORS.textLight}
+                      />
+                    </View>
+                    <Text style={[styles.splitName, isCurrentUser && styles.splitNameHighlight]}>
+                      {isCurrentUser ? "You" : (split.user_name || split.user_id)}
+                    </Text>
                   </View>
-                  <Text style={[styles.splitName, isCurrentUser && styles.splitNameHighlight]}>
-                    {isCurrentUser ? "You" : (split.user_name || split.user_id)}
+                  <Text style={[styles.splitAmount, isCurrentUser && styles.splitAmountHighlight]}>
+                    {currencySymbol}
+                    {parseFloat(split.amount_owed).toFixed(2)}
                   </Text>
                 </View>
-                <Text style={[styles.splitAmount, isCurrentUser && styles.splitAmountHighlight]}>
-                  {currencySymbol}
-                  {parseFloat(split.amount_owed).toFixed(2)}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
+        )}
 
         {/* Your Share Summary */}
-        {splits.find((s) => s.user_id === user?.id) && (
+        {Array.isArray(splits) && splits.find((s) => s.user_id === user?.id) && (
           <View style={styles.summaryCard}>
             <Text style={styles.summaryTitle}>Your Share</Text>
             <View style={styles.summaryContent}>

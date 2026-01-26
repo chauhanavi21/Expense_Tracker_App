@@ -242,31 +242,33 @@ export default function BalanceDetailScreen() {
           )}
 
         {/* Group Members */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="people" size={20} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Group Members ({members?.length || 0})</Text>
-          </View>
-          {members?.map((member) => (
-            <View key={member.user_id} style={styles.memberCard}>
-              <View style={styles.personLeft}>
-                <View style={styles.personIcon}>
-                  <Ionicons
-                    name={member.user_id === user?.id ? "person" : "person-outline"}
-                    size={20}
-                    color={COLORS.primary}
-                  />
+        {Array.isArray(members) && members.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="people" size={20} color={COLORS.primary} />
+              <Text style={styles.sectionTitle}>Group Members ({members.length})</Text>
+            </View>
+            {members.map((member) => (
+              <View key={member.user_id} style={styles.memberCard}>
+                <View style={styles.personLeft}>
+                  <View style={styles.personIcon}>
+                    <Ionicons
+                      name={member.user_id === user?.id ? "person" : "person-outline"}
+                      size={20}
+                      color={COLORS.primary}
+                    />
+                  </View>
+                  <Text style={styles.personName}>
+                    {member.user_id === user?.id ? "You" : (member.user_name || member.user_id)}
+                  </Text>
                 </View>
-                <Text style={styles.personName}>
-                  {member.user_id === user?.id ? "You" : (member.user_name || member.user_id)}
+                <Text style={styles.memberDate}>
+                  {new Date(member.joined_at).toLocaleDateString()}
                 </Text>
               </View>
-              <Text style={styles.memberDate}>
-                {new Date(member.joined_at).toLocaleDateString()}
-              </Text>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
