@@ -245,9 +245,9 @@ export default function BalanceDetailScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="people" size={20} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Group Members ({members.length})</Text>
+            <Text style={styles.sectionTitle}>Group Members ({members?.length || 0})</Text>
           </View>
-          {members.map((member) => (
+          {members?.map((member) => (
             <View key={member.user_id} style={styles.memberCard}>
               <View style={styles.personLeft}>
                 <View style={styles.personIcon}>
