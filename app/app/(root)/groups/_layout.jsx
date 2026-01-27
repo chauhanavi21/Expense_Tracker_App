@@ -10,7 +10,6 @@ export default function GroupsLayout() {
       <Stack.Screen name="add-expense" />
       <Stack.Screen name="edit-expense" />
       <Stack.Screen name="expense-detail" />
-      <Stack.Screen name="balance-detail" />
       <Stack.Screen name="share-group" />
     </Stack>
   );

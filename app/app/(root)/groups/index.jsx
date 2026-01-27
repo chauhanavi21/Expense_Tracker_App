@@ -112,7 +112,6 @@ export default function GroupsScreen() {
               </View>
               <View style={styles.groupInfo}>
                 <Text style={styles.groupName}>{item.name}</Text>
-                <Text style={styles.groupCode}>Code: {item.code}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
             </TouchableOpacity>
@@ -214,11 +213,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     padding: 16,
     borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
@@ -240,9 +234,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: COLORS.text,
     marginBottom: 4,
-  },
-  groupCode: {
-    fontSize: 12,
-    color: COLORS.textLight,
   },
 });

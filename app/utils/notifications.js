@@ -116,8 +116,8 @@ export function setupNotificationListeners(navigationRef) {
         });
       } else if (data.type === 'settled_up' || data.type === 'someone_owes') {
         navigationRef?.navigate('groups', {
-          screen: 'balance-detail',
-          params: { groupId: data.groupId }
+          screen: '[id]',
+          params: { id: data.groupId }
         });
       }
     });

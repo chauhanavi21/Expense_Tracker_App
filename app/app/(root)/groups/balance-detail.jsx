@@ -21,6 +21,15 @@ export default function BalanceDetailScreen() {
   const { user } = useUser();
   const router = useRouter();
 
+  // Balance detail is intentionally hidden; redirect to the group screen.
+  useEffect(() => {
+    if (groupId) {
+      router.replace(`/groups/${groupId}`);
+    } else {
+      router.replace("/groups");
+    }
+  }, [groupId, router]);
+
   const [group, setGroup] = useState(null);
   const [balance, setBalance] = useState(null);
   const [members, setMembers] = useState([]);
@@ -64,45 +73,7 @@ export default function BalanceDetailScreen() {
     }
   };
 
-  const handleSettleUp = (toUserId) => {
-    Alert.alert(
-      "Settle Up",
-      `Mark all debts to ${toUserId} as paid?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Settle Up",
-          style: "default",
-          onPress: async () => {
-            try {
-              const response = await fetch(`${API_URL}/groups/settle`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  groupId: parseInt(groupId),
-                  fromUserId: user.id,
-                  toUserId,
-                }),
-              });
-
-              const data = await response.json();
-
-              if (response.ok) {
-                Alert.alert("Success", "Debts settled successfully!");
-                loadBalanceData(); // Reload balance
-              } else {
-                Alert.alert("Error", data.message || "Failed to settle debts");
-              }
-            } catch (error) {
-              console.error("Error settling up:", error);
-              Alert.alert("Error", "Failed to settle debts");
-            }
-          },
-        },
-      ]
-    );
-  };
-
+  // Keep a loader while redirecting.
   if (isLoading) return <PageLoader />;
 
   const currencySymbol = group?.currency === "USD" ? "$" : "₹";
@@ -226,13 +197,6 @@ export default function BalanceDetailScreen() {
                     </Text>
                   </View>
                 </View>
-                <TouchableOpacity
-                  style={styles.settleButton}
-                  onPress={() => handleSettleUp(item.userId)}
-                >
-                  <Ionicons name="checkmark-circle" size={18} color={COLORS.white} />
-                  <Text style={styles.settleButtonText}>Settle</Text>
-                </TouchableOpacity>
               </View>
             ))}
           </View>
@@ -245,7 +209,7 @@ export default function BalanceDetailScreen() {
               <Ionicons name="checkmark-circle" size={64} color={COLORS.primary} />
               <Text style={styles.settledTitle}>All Settled Up!</Text>
               <Text style={styles.settledText}>
-                You don't owe anyone and nobody owes you in this group.
+                {"You don't owe anyone and nobody owes you in this group."}
               </Text>
             </View>
           )}
@@ -454,19 +418,5 @@ const styles = StyleSheet.create({
   memberDate: {
     fontSize: 12,
     color: COLORS.textLight,
-  },
-  settleButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  settleButtonText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: COLORS.white,
   },
 });

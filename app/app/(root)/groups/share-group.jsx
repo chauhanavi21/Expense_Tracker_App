@@ -111,7 +111,9 @@ export default function ShareGroupScreen() {
             <View style={styles.stepNumber}>
               <Text style={styles.stepNumberText}>2</Text>
             </View>
-            <Text style={styles.instructionText}>Tap "Join Group" button</Text>
+            <Text style={styles.instructionText}>
+              Tap {"\"Join Group\""} button
+            </Text>
           </View>
           <View style={styles.instructionRow}>
             <View style={styles.stepNumber}>

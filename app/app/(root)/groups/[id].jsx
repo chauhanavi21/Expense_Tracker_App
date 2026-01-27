@@ -80,6 +80,62 @@ export default function GroupDetailScreen() {
 
   if (isLoading && !refreshing) return <PageLoader />;
 
+  const smartSplitEnabled = group?.smart_split_enabled !== false;
+  const BalanceCardComponent = View;
+
+  const nettedBreakdown = (() => {
+    if (smartSplitEnabled || !balance) return null;
+
+    const map = new Map();
+    const add = (userId, userName, delta) => {
+      if (!userId) return;
+      const existing = map.get(userId) || { userId, userName: userName || userId, net: 0 };
+      map.set(userId, {
+        userId,
+        userName: userName || existing.userName || userId,
+        net: (existing.net || 0) + delta,
+      });
+    };
+
+    (balance?.owesMe || []).forEach((item) => add(item.userId, item.userName, Number(item.amount || 0)));
+    (balance?.iOwe || []).forEach((item) => add(item.userId, item.userName, -Number(item.amount || 0)));
+
+    const items = [];
+    for (const entry of map.values()) {
+      if (entry.net > 0.01) {
+        items.push({
+          userId: entry.userId,
+          userName: entry.userName,
+          amount: entry.net,
+          type: "owesMe",
+        });
+      } else if (entry.net < -0.01) {
+        items.push({
+          userId: entry.userId,
+          userName: entry.userName,
+          amount: Math.abs(entry.net),
+          type: "iOwe",
+        });
+      }
+    }
+
+    items.sort((a, b) => b.amount - a.amount);
+    return items;
+  })();
+
+  const topOwesMe =
+    Array.isArray(balance?.owesMe) && balance.owesMe.length > 0
+      ? balance.owesMe.reduce((maxItem, currentItem) =>
+          (currentItem?.amount || 0) > (maxItem?.amount || 0) ? currentItem : maxItem
+        )
+      : null;
+
+  const smartPositiveSubtext = topOwesMe
+    ? `${topOwesMe.userName || topOwesMe.userId} owes you${
+        balance.owesMe.length > 1 ? ` (and ${balance.owesMe.length - 1} others)` : ""
+      }`
+    : "You are owed";
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -104,10 +160,7 @@ export default function GroupDetailScreen() {
           <>
             {/* Balance Summary */}
             {balance && (
-              <TouchableOpacity
-                style={styles.balanceCard}
-                onPress={() => router.push(`/groups/balance-detail?groupId=${id}`)}
-              >
+              <BalanceCardComponent style={styles.balanceCard}>
                 <Text style={styles.balanceTitle}>Your Balance</Text>
                 <Text
                   style={[
@@ -122,45 +175,36 @@ export default function GroupDetailScreen() {
                 </Text>
                 <Text style={styles.balanceSubtext}>
                   {balance.netBalance > 0
-                    ? "You are owed"
+                    ? smartSplitEnabled
+                      ? smartPositiveSubtext
+                      : "You are owed"
                     : balance.netBalance < 0
                     ? "You owe"
                     : "All settled up"}
                 </Text>
 
                 {/* Breakdown */}
-                {(balance.owesMe?.length > 0 || balance.iOwe?.length > 0) && (
+                {!smartSplitEnabled && Array.isArray(nettedBreakdown) && nettedBreakdown.length > 0 && (
                   <View style={styles.breakdown}>
-                    {balance.owesMe?.map((item, index) => (
-                      <View key={`owes-${index}`} style={styles.breakdownItem}>
+                    {nettedBreakdown.map((item, index) => (
+                      <View key={`${item.type}-${item.userId}-${index}`} style={styles.breakdownItem}>
                         <Text style={styles.breakdownLabel}>
-                          {item.userName || item.userId} owes you
+                          {item.type === "owesMe"
+                            ? `${item.userName || item.userId} owes you`
+                            : `You owe ${item.userName || item.userId}`}
                         </Text>
-                        <Text style={styles.breakdownPositive}>
-                          +{group?.currency === "USD" ? "$" : "₹"}
-                          {item.amount.toFixed(2)}
-                        </Text>
-                      </View>
-                    ))}
-                    {balance.iOwe?.map((item, index) => (
-                      <View key={`iowe-${index}`} style={styles.breakdownItem}>
-                        <Text style={styles.breakdownLabel}>
-                          You owe {item.userName || item.userId}
-                        </Text>
-                        <Text style={styles.breakdownNegative}>
-                          -{group?.currency === "USD" ? "$" : "₹"}
+                        <Text
+                          style={item.type === "owesMe" ? styles.breakdownPositive : styles.breakdownNegative}
+                        >
+                          {item.type === "owesMe" ? "+" : "-"}
+                          {group?.currency === "USD" ? "$" : "₹"}
                           {item.amount.toFixed(2)}
                         </Text>
                       </View>
                     ))}
                   </View>
                 )}
-
-                <View style={styles.viewDetailsRow}>
-                  <Text style={styles.viewDetailsText}>View Full Details</Text>
-                  <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
-                </View>
-              </TouchableOpacity>
+              </BalanceCardComponent>
             )}
 
             {/* Expenses Header */}
@@ -181,9 +225,8 @@ export default function GroupDetailScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.expenseCard}
-            onPress={() =>
-              router.push(`/groups/expense-detail?expenseId=${item.id}&groupId=${id}`)
-            }
+            activeOpacity={0.8}
+            onPress={() => router.push(`/groups/expense-detail?expenseId=${item.id}&groupId=${id}`)}
           >
             <View style={styles.expenseLeft}>
               <Text style={styles.expenseDescription}>{item.description}</Text>

@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   StatusBar,
@@ -28,12 +29,17 @@ export default function GroupSettingsScreen() {
 
   const [group, setGroup] = useState(null);
   const [members, setMembers] = useState([]);
+  const [balance, setBalance] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSmartSplitModal, setShowSmartSplitModal] = useState(false);
   const [smartSplitResult, setSmartSplitResult] = useState(null);
   const [calculating, setCalculating] = useState(false);
   const [modalAnimation] = useState(new Animated.Value(0));
   const [smartSplitEnabled, setSmartSplitEnabled] = useState(true);
+
+  const [isEditingGroupName, setIsEditingGroupName] = useState(false);
+  const [editedGroupName, setEditedGroupName] = useState("");
+  const [isSavingGroupName, setIsSavingGroupName] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -55,11 +61,19 @@ export default function GroupSettingsScreen() {
       const groupData = await groupRes.json();
       setGroup(groupData);
       setSmartSplitEnabled(groupData.smart_split_enabled !== false);
+      setEditedGroupName(groupData?.name || "");
 
       // Load members
       const membersRes = await fetch(`${API_URL}/groups/${groupId}/members`);
       const membersData = await membersRes.json();
       setMembers(membersData);
+
+      // Load current user's balance (used for direct settle-up when Smart Split is off)
+      if (user?.id) {
+        const balanceRes = await fetch(`${API_URL}/groups/${groupId}/balance/${user.id}`);
+        const balanceData = await balanceRes.json();
+        setBalance(balanceData);
+      }
     } catch (error) {
       console.error("Error loading data:", error);
       Alert.alert("Error", "Failed to load group data");
@@ -92,6 +106,43 @@ export default function GroupSettingsScreen() {
       console.error("Error toggling smart split:", error);
       Alert.alert("Error", "Failed to update setting");
     }
+  };
+
+  const handleSaveGroupName = async () => {
+    const trimmed = editedGroupName.trim();
+    if (!trimmed) {
+      Alert.alert("Error", "Group name cannot be empty");
+      return;
+    }
+
+    setIsSavingGroupName(true);
+    try {
+      const response = await fetch(`${API_URL}/groups/${groupId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed, userId: user?.id }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        Alert.alert("Error", data.message || "Failed to update group name");
+        return;
+      }
+
+      setGroup(data);
+      setIsEditingGroupName(false);
+      Alert.alert("Success", "Group name updated");
+    } catch (error) {
+      console.error("Error updating group name:", error);
+      Alert.alert("Error", "Failed to update group name");
+    } finally {
+      setIsSavingGroupName(false);
+    }
+  };
+
+  const handleCancelGroupNameEdit = () => {
+    setEditedGroupName(group?.name || "");
+    setIsEditingGroupName(false);
   };
 
   const shareGroup = async () => {
@@ -286,7 +337,7 @@ export default function GroupSettingsScreen() {
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Mark as Paid",
+          text: "Settle Up",
           onPress: async () => {
             try {
               const response = await fetch(`${API_URL}/groups/settle`, {
@@ -317,9 +368,76 @@ export default function GroupSettingsScreen() {
     );
   };
 
+  const handleDirectSettleUp = (toUserId, toUserName, amount) => {
+    Alert.alert(
+      "Settle Up",
+      `Mark your debt to ${toUserName || toUserId} as paid?\n\n${group?.currency === "USD" ? "$" : "â‚¹"}${Number(amount || 0).toFixed(2)}`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Settle Up",
+          onPress: async () => {
+            try {
+              const response = await fetch(`${API_URL}/groups/settle`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  groupId: groupId,
+                  fromUserId: user.id,
+                  toUserId,
+                }),
+              });
+
+              if (response.ok) {
+                Alert.alert("Success", "Debts settled successfully!");
+                loadData();
+              } else {
+                const data = await response.json();
+                Alert.alert("Error", data.message || "Failed to settle up");
+              }
+            } catch (error) {
+              console.error("Error settling up:", error);
+              Alert.alert("Error", "Failed to settle up");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (isLoading) return <PageLoader />;
 
   const currencySymbol = group?.currency === "USD" ? "$" : "₹";
+
+  // Net mutual debts against the same person (e.g., 550 owed - 220 owed back = 330)
+  const nettedBalanceByUser = (b) => {
+    const map = new Map();
+    const add = (userId, userName, delta) => {
+      if (!userId) return;
+      const existing = map.get(userId) || { userId, userName: userName || userId, net: 0 };
+      map.set(userId, {
+        userId,
+        userName: userName || existing.userName || userId,
+        net: (existing.net || 0) + delta,
+      });
+    };
+
+    (b?.owesMe || []).forEach((item) => add(item.userId, item.userName, Number(item.amount || 0)));
+    (b?.iOwe || []).forEach((item) => add(item.userId, item.userName, -Number(item.amount || 0)));
+
+    const youOwe = [];
+    const owesYou = [];
+    for (const entry of map.values()) {
+      if (entry.net > 0.01) owesYou.push({ userId: entry.userId, userName: entry.userName, amount: entry.net });
+      if (entry.net < -0.01) youOwe.push({ userId: entry.userId, userName: entry.userName, amount: Math.abs(entry.net) });
+    }
+
+    youOwe.sort((a, b2) => b2.amount - a.amount);
+    owesYou.sort((a, b2) => b2.amount - a.amount);
+    return { youOwe, owesYou };
+  };
+
+  const { youOwe: netYouOwe } = nettedBalanceByUser(balance);
 
   return (
     <View style={styles.container}>
@@ -340,8 +458,45 @@ export default function GroupSettingsScreen() {
           <View style={styles.groupIconContainer}>
             <Ionicons name="people" size={32} color={COLORS.primary} />
           </View>
-          <Text style={styles.groupName}>{group?.name}</Text>
-          <Text style={styles.groupCode}>Code: {group?.code}</Text>
+          {isEditingGroupName ? (
+            <View style={styles.groupNameEditWrap}>
+              <TextInput
+                style={styles.groupNameInput}
+                value={editedGroupName}
+                onChangeText={setEditedGroupName}
+                autoCapitalize="words"
+                placeholder="Group name"
+                placeholderTextColor={COLORS.textLight}
+                editable={!isSavingGroupName}
+              />
+              <View style={styles.groupNameEditButtons}>
+                <TouchableOpacity
+                  style={[styles.groupNameEditButton, styles.groupNameCancelButton]}
+                  onPress={handleCancelGroupNameEdit}
+                  disabled={isSavingGroupName}
+                >
+                  <Ionicons name="close" size={18} color={COLORS.text} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.groupNameEditButton, styles.groupNameSaveButton]}
+                  onPress={handleSaveGroupName}
+                  disabled={isSavingGroupName}
+                >
+                  <Ionicons name="checkmark" size={18} color={COLORS.white} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.groupNameRow}>
+              <Text style={styles.groupName}>{group?.name}</Text>
+              <TouchableOpacity
+                style={styles.groupNameEditIcon}
+                onPress={() => setIsEditingGroupName(true)}
+              >
+                <Ionicons name="pencil" size={16} color={COLORS.primary} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Members Section */}
@@ -455,6 +610,52 @@ export default function GroupSettingsScreen() {
             />
           </TouchableOpacity>
         </View>
+
+        {/* Settle Up (only shown here) */}
+        {!smartSplitEnabled && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Settle Up</Text>
+            <Text style={styles.sectionDescription}>
+              Settle debts directly with people you owe in this group
+            </Text>
+
+            {Array.isArray(netYouOwe) && netYouOwe.length > 0 ? (
+              netYouOwe.map((item, index) => (
+                <View key={`direct-iowe-${index}`} style={styles.personCard}>
+                  <View style={styles.personLeft}>
+                    <View style={styles.personIcon}>
+                      <Ionicons name="person" size={20} color={COLORS.expense} />
+                    </View>
+                    <View>
+                      <Text style={styles.personName}>{item.userName || item.userId}</Text>
+                      <Text style={styles.amountNegative}>
+                        {currencySymbol}
+                        {item.amount.toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.settleButton}
+                    onPress={() =>
+                      handleDirectSettleUp(item.userId, item.userName, item.amount)
+                    }
+                  >
+                    <Ionicons name="checkmark-circle" size={18} color={COLORS.white} />
+                    <Text style={styles.settleButtonText}>Settle Up</Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            ) : (
+              <View style={styles.emptySettleCard}>
+                <Ionicons name="checkmark-circle" size={48} color={COLORS.income} />
+                <Text style={styles.emptySettleTitle}>Nothing to settle</Text>
+                <Text style={styles.emptySettleText}>
+                  {"You don't owe anyone in this group."}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Actions Section */}
         <View style={styles.section}>
@@ -625,7 +826,7 @@ export default function GroupSettingsScreen() {
                           size={18}
                           color={COLORS.white}
                         />
-                        <Text style={styles.settleButtonText}>Mark as Paid</Text>
+                        <Text style={styles.settleButtonText}>Settle Up</Text>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -704,10 +905,54 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 4,
   },
-  groupCode: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    letterSpacing: 2,
+  groupNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  groupNameEditIcon: {
+    padding: 8,
+    borderRadius: 16,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  groupNameEditWrap: {
+    width: "100%",
+    alignItems: "center",
+    gap: 12,
+  },
+  groupNameInput: {
+    width: "100%",
+    fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.text,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    textAlign: "center",
+  },
+  groupNameEditButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  groupNameEditButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  groupNameCancelButton: {
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  groupNameSaveButton: {
+    backgroundColor: COLORS.primary,
   },
   section: {
     marginBottom: 24,
@@ -985,19 +1230,84 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.primary,
   },
+  personCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: COLORS.card,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 10,
+  },
+  personLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  personIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  personName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  amountNegative: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: "600",
+    color: COLORS.expense,
+  },
   settleButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: COLORS.income,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   settleButtonText: {
     fontSize: 14,
     fontWeight: "600",
     color: COLORS.white,
+  },
+  emptySettleCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  emptySettleTitle: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: "700",
+    color: COLORS.text,
+  },
+  emptySettleText: {
+    marginTop: 6,
+    fontSize: 13,
+    color: COLORS.textLight,
+    textAlign: "center",
+    lineHeight: 18,
   },
   modalCloseButton: {
     backgroundColor: COLORS.background,
