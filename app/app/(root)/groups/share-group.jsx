@@ -1,6 +1,16 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Share, StyleSheet, Text, TouchableOpacity, View, Platform, StatusBar } from "react-native";
+import {
+  Alert,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Platform,
+  StatusBar,
+  ScrollView,
+} from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
@@ -61,7 +71,7 @@ export default function ShareGroupScreen() {
         <View style={{ width: 44 }} />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.iconContainer}>
           <Ionicons name="share-social" size={64} color={COLORS.primary} />
         </View>
@@ -110,7 +120,7 @@ export default function ShareGroupScreen() {
             <Text style={styles.instructionText}>Enter the 6-character code</Text>
           </View>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }

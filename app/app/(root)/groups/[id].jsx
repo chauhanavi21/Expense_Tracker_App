@@ -144,9 +144,9 @@ export default function GroupDetailScreen() {
         </Text>
         <TouchableOpacity
           style={styles.shareButton}
-          onPress={() => router.push(`/groups/share-group?groupId=${id}`)}
+          onPress={() => router.push(`/groups/group-settings?groupId=${id}`)}
         >
-          <Ionicons name="share-outline" size={22} color={COLORS.text} />
+          <Ionicons name="settings-outline" size={22} color={COLORS.text} />
         </TouchableOpacity>
       </View>
 

@@ -25,6 +25,7 @@ export default function ExpenseDetailScreen() {
   const [splits, setSplits] = useState([]);
   const [group, setGroup] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadExpenseDetail();
@@ -71,6 +72,57 @@ export default function ExpenseDetailScreen() {
 
   const handleEdit = () => {
     router.push(`/groups/edit-expense?expenseId=${expenseId}&groupId=${groupId}`);
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      "Delete Expense",
+      "Are you sure you want to delete this expense? This action cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              const response = await fetch(`${API_URL}/groups/expenses/${expenseId}`, {
+                method: "DELETE",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  userId: user?.id,
+                }),
+              });
+
+              if (response.ok) {
+                Alert.alert("Success", "Expense deleted successfully", [
+                  {
+                    text: "OK",
+                    onPress: () => {
+                      // Navigate back to group detail screen
+                      router.back();
+                    },
+                  },
+                ]);
+              } else {
+                const errorData = await response.json();
+                Alert.alert("Error", errorData.message || "Failed to delete expense");
+              }
+            } catch (error) {
+              console.error("Error deleting expense:", error);
+              Alert.alert("Error", "Failed to delete expense. Please try again.");
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -216,6 +268,20 @@ export default function ExpenseDetailScreen() {
               )}
             </View>
           </View>
+        )}
+
+        {/* Delete Button - Only show if user paid for the expense */}
+        {paidByYou && (
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDelete}
+            disabled={isDeleting}
+          >
+            <Ionicons name="trash-outline" size={20} color={COLORS.white} />
+            <Text style={styles.deleteButtonText}>
+              {isDeleting ? "Deleting..." : "Delete Expense"}
+            </Text>
+          </TouchableOpacity>
         )}
       </ScrollView>
     </View>
@@ -439,5 +505,25 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     opacity: 0.2,
     marginVertical: 8,
+  },
+  deleteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: COLORS.expense,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.white,
   },
 });

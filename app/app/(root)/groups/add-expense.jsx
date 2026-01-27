@@ -14,6 +14,9 @@ import {
   TouchableOpacity,
   View,
   StatusBar,
+  Modal,
+  Animated,
+  Pressable,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
@@ -37,10 +40,13 @@ export default function AddGroupExpenseScreen() {
   const [amount, setAmount] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [members, setMembers] = useState([]);
+  const [paidBy, setPaidBy] = useState(null); // Who paid for the expense
+  const [showPaidByModal, setShowPaidByModal] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [splitType, setSplitType] = useState("equal"); // "equal" or "custom"
   const [customSplits, setCustomSplits] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [modalAnimation] = useState(new Animated.Value(0));
 
   useEffect(() => {
     loadMembers();
@@ -51,12 +57,43 @@ export default function AddGroupExpenseScreen() {
       const response = await fetch(`${API_URL}/groups/${groupId}/members`);
       const data = await response.json();
       setMembers(data);
-      // Auto-select current user
+      // Auto-select current user as payer
+      setPaidBy(user.id);
+      // Auto-select current user in participants
       setSelectedMembers([user.id]);
     } catch (error) {
       console.error("Error loading members:", error);
       Alert.alert("Error", "Failed to load group members");
     }
+  };
+
+  const openPaidByModal = () => {
+    setShowPaidByModal(true);
+    Animated.spring(modalAnimation, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 8,
+    }).start();
+  };
+
+  const closePaidByModal = () => {
+    Animated.timing(modalAnimation, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowPaidByModal(false);
+    });
+  };
+
+  const selectPaidBy = (userId) => {
+    setPaidBy(userId);
+    closePaidByModal();
+  };
+
+  const getPaidByMember = () => {
+    return members.find((m) => m.user_id === paidBy);
   };
 
   const toggleMember = (userId) => {
@@ -144,7 +181,7 @@ export default function AddGroupExpenseScreen() {
           groupId: parseInt(groupId),
           description: description.trim(),
           amount: parseFloat(amount),
-          paidBy: user.id,
+          paidBy: paidBy, // Use selected payer
           category: selectedCategory,
           splits,
         }),
@@ -182,6 +219,27 @@ export default function AddGroupExpenseScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Paid By Selector */}
+        <Text style={styles.label}>Paid By</Text>
+        <TouchableOpacity style={styles.paidBySelector} onPress={openPaidByModal}>
+          <View style={styles.paidByContent}>
+            <View style={styles.paidByIcon}>
+              <Ionicons name="wallet" size={20} color={COLORS.primary} />
+            </View>
+            <View style={styles.paidByInfo}>
+              <Text style={styles.paidByLabel}>Who paid?</Text>
+              <Text style={styles.paidByName}>
+                {paidBy
+                  ? paidBy === user.id
+                    ? "You"
+                    : getPaidByMember()?.user_name || "Unknown"
+                  : "Select payer"}
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-down" size={20} color={COLORS.textLight} />
+        </TouchableOpacity>
+
         {/* Description */}
         <Text style={styles.label}>Description</Text>
         <TextInput
@@ -337,6 +395,83 @@ export default function AddGroupExpenseScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Paid By Modal */}
+      <Modal
+        visible={showPaidByModal}
+        transparent
+        animationType="none"
+        onRequestClose={closePaidByModal}
+      >
+        <Pressable style={styles.modalOverlay} onPress={closePaidByModal}>
+          <Animated.View
+            style={[
+              styles.modalContent,
+              {
+                transform: [
+                  {
+                    translateY: modalAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [600, 0],
+                    }),
+                  },
+                ],
+                opacity: modalAnimation,
+              },
+            ]}
+          >
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Who paid for this expense?</Text>
+            <Text style={styles.modalSubtitle}>
+              Select the person who made the payment
+            </Text>
+
+            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+              {members.map((member) => {
+                const isSelected = paidBy === member.user_id;
+                const isCurrentUser = member.user_id === user.id;
+                return (
+                  <TouchableOpacity
+                    key={member.user_id}
+                    style={[styles.modalItem, isSelected && styles.modalItemSelected]}
+                    onPress={() => selectPaidBy(member.user_id)}
+                  >
+                    <View style={styles.modalItemLeft}>
+                      <View
+                        style={[
+                          styles.modalAvatar,
+                          isSelected && styles.modalAvatarSelected,
+                        ]}
+                      >
+                        <Ionicons
+                          name={isCurrentUser ? "person" : "person-outline"}
+                          size={24}
+                          color={isSelected ? COLORS.white : COLORS.primary}
+                        />
+                      </View>
+                      <View>
+                        <Text style={[styles.modalItemName, isSelected && styles.modalItemNameSelected]}>
+                          {isCurrentUser ? "You" : member.user_name || member.user_id}
+                        </Text>
+                        {isCurrentUser && (
+                          <Text style={styles.modalItemSubtext}>Current user</Text>
+                        )}
+                      </View>
+                    </View>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <TouchableOpacity style={styles.modalCloseButton} onPress={closePaidByModal}>
+              <Text style={styles.modalCloseButtonText}>Done</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -536,6 +671,145 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   submitButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  paidBySelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+  },
+  paidByContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  paidByIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.background,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  paidByInfo: {
+    flex: 1,
+  },
+  paidByLabel: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginBottom: 2,
+  },
+  paidByName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    maxHeight: "80%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: COLORS.border,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    marginBottom: 20,
+  },
+  modalList: {
+    maxHeight: 400,
+  },
+  modalItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  modalItemSelected: {
+    backgroundColor: COLORS.primary + "15",
+    borderColor: COLORS.primary,
+  },
+  modalItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  modalAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.card,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+  },
+  modalAvatarSelected: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  modalItemName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  modalItemNameSelected: {
+    color: COLORS.primary,
+  },
+  modalItemSubtext: {
+    fontSize: 12,
+    color: COLORS.textLight,
+  },
+  modalCloseButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 16,
+  },
+  modalCloseButtonText: {
     color: COLORS.white,
     fontSize: 16,
     fontWeight: "600",
