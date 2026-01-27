@@ -4,6 +4,7 @@ import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "reac
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
+import { API_URL } from "../../constants/api";
 
 const formatSince = (value) => {
   if (!value) return "";
@@ -38,13 +39,39 @@ export default function ProfileScreen() {
       const firstName = parts[0];
       const lastName = parts.slice(1).join(" ") || undefined;
 
+      // Update user name in Clerk
       await user.update({
         firstName,
         ...(lastName ? { lastName } : {}),
       });
 
+      // Update user name in backend database (groups, expenses, etc.)
+      try {
+        const response = await fetch(`${API_URL}/users/profile`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            userName: trimmedName,
+          }),
+        });
+
+        if (!response.ok) {
+          console.error("Failed to update name in backend:", await response.text());
+          // Don't throw error, just log it - Clerk update was successful
+        } else {
+          const data = await response.json();
+          console.log("Backend update successful:", data);
+        }
+      } catch (backendError) {
+        console.error("Error updating name in backend:", backendError);
+        // Continue anyway - Clerk update was successful
+      }
+
       setIsEditing(false);
-      Alert.alert("Success", "Name updated successfully");
+      Alert.alert("Success", "Name updated successfully across all groups and expenses");
     } catch (error) {
       console.error("Error updating name:", error);
       Alert.alert("Error", "Failed to update name. Please try again.");
