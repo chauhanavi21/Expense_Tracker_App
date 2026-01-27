@@ -64,10 +64,11 @@ export default function BalanceDetailScreen() {
       // Load members
       const membersRes = await fetch(`${API_URL}/groups/${groupId}/members`);
       const membersData = await membersRes.json();
-      setMembers(membersData);
+      setMembers(membersRes.ok && Array.isArray(membersData) ? membersData : []);
     } catch (error) {
       console.error("Error loading balance data:", error);
       Alert.alert("Error", "Failed to load balance details");
+      setMembers([]);
     } finally {
       setIsLoading(false);
     }
@@ -153,7 +154,7 @@ export default function BalanceDetailScreen() {
         </View>
 
         {/* People Who Owe You */}
-        {balance?.owesMe && balance.owesMe.length > 0 && (
+        {Array.isArray(balance?.owesMe) && balance.owesMe.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="person-add" size={20} color={COLORS.income} />
@@ -177,7 +178,7 @@ export default function BalanceDetailScreen() {
         )}
 
         {/* People You Owe */}
-        {balance?.iOwe && balance.iOwe.length > 0 && (
+        {Array.isArray(balance?.iOwe) && balance.iOwe.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="person-remove" size={20} color={COLORS.expense} />
@@ -203,8 +204,8 @@ export default function BalanceDetailScreen() {
         )}
 
         {/* All Settled */}
-        {(!balance?.owesMe || balance.owesMe.length === 0) &&
-          (!balance?.iOwe || balance.iOwe.length === 0) && (
+        {(!Array.isArray(balance?.owesMe) || balance.owesMe.length === 0) &&
+          (!Array.isArray(balance?.iOwe) || balance.iOwe.length === 0) && (
             <View style={styles.settledCard}>
               <Ionicons name="checkmark-circle" size={64} color={COLORS.primary} />
               <Text style={styles.settledTitle}>All Settled Up!</Text>

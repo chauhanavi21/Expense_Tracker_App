@@ -27,6 +27,8 @@ export default function GroupSettingsScreen() {
   const { user } = useUser();
   const router = useRouter();
 
+  const safeArray = (value) => (Array.isArray(value) ? value : []);
+
   const [group, setGroup] = useState(null);
   const [members, setMembers] = useState([]);
   const [balance, setBalance] = useState(null);
@@ -59,6 +61,7 @@ export default function GroupSettingsScreen() {
       // Load group details
       const groupRes = await fetch(`${API_URL}/groups/${groupId}`);
       const groupData = await groupRes.json();
+      if (!groupRes.ok) throw new Error(groupData?.message || "Failed to load group");
       setGroup(groupData);
       setSmartSplitEnabled(groupData.smart_split_enabled !== false);
       setEditedGroupName(groupData?.name || "");
@@ -66,17 +69,19 @@ export default function GroupSettingsScreen() {
       // Load members
       const membersRes = await fetch(`${API_URL}/groups/${groupId}/members`);
       const membersData = await membersRes.json();
-      setMembers(membersData);
+      setMembers(membersRes.ok ? safeArray(membersData) : []);
 
       // Load current user's balance (used for direct settle-up when Smart Split is off)
       if (user?.id) {
         const balanceRes = await fetch(`${API_URL}/groups/${groupId}/balance/${user.id}`);
         const balanceData = await balanceRes.json();
-        setBalance(balanceData);
+        setBalance(balanceRes.ok ? balanceData : null);
       }
     } catch (error) {
       console.error("Error loading data:", error);
       Alert.alert("Error", "Failed to load group data");
+      setMembers([]);
+      setBalance(null);
     } finally {
       setIsLoading(false);
     }
@@ -501,8 +506,11 @@ export default function GroupSettingsScreen() {
 
         {/* Members Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Members ({members.length})</Text>
-          {members.map((member, index) => {
+          <Text style={styles.sectionTitle}>
+            Members ({Array.isArray(members) ? members.length : 0})
+          </Text>
+          {Array.isArray(members) &&
+            members.map((member, index) => {
             const isCurrentUser = member.user_id === user.id;
             return (
               <View
@@ -780,7 +788,8 @@ export default function GroupSettingsScreen() {
 
                   {/* Transactions */}
                   <Text style={styles.transactionsTitle}>Settlement Plan</Text>
-                  {smartSplitResult?.transactions.map((transaction, index) => (
+                  {Array.isArray(smartSplitResult?.transactions) &&
+                    smartSplitResult.transactions.map((transaction, index) => (
                     <View key={index} style={styles.transactionCard}>
                       <View style={styles.transactionHeader}>
                         <View style={styles.transactionFrom}>

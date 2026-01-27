@@ -53,12 +53,13 @@ export default function EditGroupExpenseScreen() {
       // Load members
       const membersRes = await fetch(`${API_URL}/groups/${groupId}/members`);
       const membersData = await membersRes.json();
-      setMembers(membersData);
+      setMembers(membersRes.ok && Array.isArray(membersData) ? membersData : []);
 
       // Load expense details
       const expenseRes = await fetch(`${API_URL}/groups/${groupId}/expenses`);
       const expensesData = await expenseRes.json();
-      const expenseDetail = expensesData.find((e) => e.id === parseInt(expenseId));
+      const expensesList = expenseRes.ok && Array.isArray(expensesData) ? expensesData : [];
+      const expenseDetail = expensesList.find((e) => e.id === parseInt(expenseId));
 
       if (!expenseDetail) {
         Alert.alert("Error", "Expense not found");
@@ -75,7 +76,8 @@ export default function EditGroupExpenseScreen() {
 
       // Load splits
       const splitsRes = await fetch(`${API_URL}/groups/expenses/${expenseId}/splits`);
-      const splitsData = await splitsRes.json();
+      const splitsJson = await splitsRes.json();
+      const splitsData = splitsRes.ok && Array.isArray(splitsJson) ? splitsJson : [];
 
       // Pre-fill form data
       setDescription(expenseDetail.description);

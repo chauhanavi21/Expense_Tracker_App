@@ -56,7 +56,7 @@ export default function AddGroupExpenseScreen() {
     try {
       const response = await fetch(`${API_URL}/groups/${groupId}/members`);
       const data = await response.json();
-      setMembers(data);
+      setMembers(response.ok && Array.isArray(data) ? data : []);
       // Auto-select current user as payer
       setPaidBy(user.id);
       // Auto-select current user in participants
@@ -64,6 +64,7 @@ export default function AddGroupExpenseScreen() {
     } catch (error) {
       console.error("Error loading members:", error);
       Alert.alert("Error", "Failed to load group members");
+      setMembers([]);
     }
   };
 
@@ -427,7 +428,7 @@ export default function AddGroupExpenseScreen() {
             </Text>
 
             <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
-              {members.map((member) => {
+              {Array.isArray(members) && members.map((member) => {
                 const isSelected = paidBy === member.user_id;
                 const isCurrentUser = member.user_id === user.id;
                 return (
