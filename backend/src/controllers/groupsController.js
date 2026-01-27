@@ -162,15 +162,16 @@ export async function getGroupMembers(req, res) {
 
     const members = await sql`
       SELECT 
-        user_id, 
-        COALESCE(gm.user_name, u.user_name, 'User') as user_name, 
-        joined_at
+        gm.user_id, 
+        COALESCE(gm.user_name, u.user_name, gm.user_id) as user_name, 
+        gm.joined_at
       FROM group_members gm
       LEFT JOIN users u ON gm.user_id = u.user_id
       WHERE gm.group_id = ${groupId}
-      ORDER BY joined_at ASC
+      ORDER BY gm.joined_at ASC
     `;
 
+    console.log(`getGroupMembers for group ${groupId}:`, members.length, 'members');
     res.status(200).json(members);
   } catch (error) {
     console.log("Error getting group members", error);
@@ -246,6 +247,8 @@ export async function addGroupExpense(req, res) {
   try {
     const { groupId, description, amount, paidBy, category, splits } = req.body;
 
+    console.log('=== addGroupExpense ===', { groupId, description, amount, paidBy, category, splits });
+
     if (!groupId || !description || !amount || !paidBy || !category || !splits) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -271,12 +274,16 @@ export async function addGroupExpense(req, res) {
       RETURNING *
     `;
 
+    console.log('Created expense:', expense[0]);
+
     // Create splits
     for (const split of splits) {
-      await sql`
+      const result = await sql`
         INSERT INTO expense_splits(expense_id, user_id, amount_owed)
         VALUES (${expense[0].id}, ${split.userId}, ${split.amount})
+        RETURNING *
       `;
+      console.log('Created split:', result[0]);
     }
 
     res.status(201).json(expense[0]);
@@ -414,11 +421,13 @@ export async function getGroupBalance(req, res) {
   try {
     const { groupId, userId } = req.params;
 
+    console.log(`=== getGroupBalance for user ${userId} in group ${groupId} ===`);
+
     // Get detailed breakdown - others who owe the user
     const owesMe = await sql`
       SELECT 
         es.user_id, 
-        COALESCE(gm.user_name, u.user_name, es.user_id) as user_name, 
+        COALESCE(MAX(gm.user_name), MAX(u.user_name), es.user_id) as user_name, 
         SUM(es.amount_owed) as total
       FROM expense_splits es
       INNER JOIN group_expenses ge ON es.expense_id = ge.id
@@ -428,14 +437,14 @@ export async function getGroupBalance(req, res) {
         AND ge.paid_by_user_id = ${userId}
         AND es.user_id != ${userId}
         AND es.is_settled = false
-      GROUP BY es.user_id, gm.user_name
+      GROUP BY es.user_id
     `;
 
     // Get detailed breakdown - what user owes others
     const iOwe = await sql`
       SELECT 
         ge.paid_by_user_id as user_id, 
-        COALESCE(gm.user_name, u.user_name, ge.paid_by_user_id) as user_name, 
+        COALESCE(MAX(gm.user_name), MAX(u.user_name), ge.paid_by_user_id) as user_name, 
         SUM(es.amount_owed) as total
       FROM expense_splits es
       INNER JOIN group_expenses ge ON es.expense_id = ge.id
@@ -445,13 +454,18 @@ export async function getGroupBalance(req, res) {
         AND es.user_id = ${userId}
         AND ge.paid_by_user_id != ${userId}
         AND es.is_settled = false
-      GROUP BY ge.paid_by_user_id, gm.user_name
+      GROUP BY ge.paid_by_user_id
     `;
+
+    console.log('owesMe raw:', owesMe);
+    console.log('iOwe raw:', iOwe);
 
     // Calculate totals
     const totalLent = owesMe.reduce((sum, o) => sum + parseFloat(o.total), 0);
     const totalBorrowed = iOwe.reduce((sum, o) => sum + parseFloat(o.total), 0);
     const netBalance = totalLent - totalBorrowed;
+
+    console.log('Balance calculation:', { totalLent, totalBorrowed, netBalance });
 
     res.status(200).json({
       totalPaid: totalLent,  // What others owe you (you lent)

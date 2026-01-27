@@ -56,6 +56,7 @@ export default function AddGroupExpenseScreen() {
     try {
       const response = await fetch(`${API_URL}/groups/${groupId}/members`);
       const data = await response.json();
+      console.log('Add-expense members response:', { ok: response.ok, status: response.status, data });
       setMembers(response.ok && Array.isArray(data) ? data : []);
       // Auto-select current user as payer
       setPaidBy(user.id);

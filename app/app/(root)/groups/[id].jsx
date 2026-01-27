@@ -32,28 +32,46 @@ export default function GroupDetailScreen() {
   const loadGroupData = async () => {
     if (!user?.id) return;
     try {
+      const safeJson = async (res) => {
+        try {
+          return await res.json();
+        } catch {
+          return null;
+        }
+      };
+
       // Load group details
       const groupRes = await fetch(`${API_URL}/groups/${id}`);
-      const groupData = await groupRes.json();
-      setGroup(groupData);
+      const groupData = await safeJson(groupRes);
+      if (groupRes.ok) {
+        setGroup(groupData);
+      }
 
       // Load expenses
       const expensesRes = await fetch(`${API_URL}/groups/${id}/expenses`);
-      const expensesData = await expensesRes.json();
-      setExpenses(expensesData);
+      const expensesData = await safeJson(expensesRes);
+      setExpenses(expensesRes.ok && Array.isArray(expensesData) ? expensesData : []);
 
       // Load members
       const membersRes = await fetch(`${API_URL}/groups/${id}/members`);
-      const membersData = await membersRes.json();
-      setMembers(membersData);
+      const membersData = await safeJson(membersRes);
+      setMembers(membersRes.ok && Array.isArray(membersData) ? membersData : []);
 
       // Load balance
       const balanceRes = await fetch(`${API_URL}/groups/${id}/balance/${user.id}`);
-      const balanceData = await balanceRes.json();
-      setBalance(balanceData);
+      const balanceData = await safeJson(balanceRes);
+      const net = Number(balanceData?.netBalance);
+      setBalance({
+        netBalance: Number.isFinite(net) ? net : 0,
+        owesMe: Array.isArray(balanceData?.owesMe) ? balanceData.owesMe : [],
+        iOwe: Array.isArray(balanceData?.iOwe) ? balanceData.iOwe : [],
+      });
     } catch (error) {
       console.error("Error loading group data:", error);
       Alert.alert("Error", "Failed to load group data");
+      setExpenses([]);
+      setMembers([]);
+      setBalance({ netBalance: 0, owesMe: [], iOwe: [] });
     } finally {
       setIsLoading(false);
     }

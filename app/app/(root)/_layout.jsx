@@ -45,6 +45,13 @@ function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="charts"
+        options={{
+          title: "Charts",
+          tabBarIcon: ({ color, size }) => <Ionicons name="stats-chart" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="create"
         options={{
           href: null,

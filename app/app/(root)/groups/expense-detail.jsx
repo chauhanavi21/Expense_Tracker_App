@@ -45,21 +45,31 @@ export default function ExpenseDetailScreen() {
       // Load group info for currency
       const groupRes = await fetch(`${API_URL}/groups/${groupId}`);
       const groupData = await groupRes.json();
-      setGroup(groupData);
+      if (groupRes.ok) {
+        setGroup(groupData);
+      }
 
       // Load expense details
       const expenseRes = await fetch(`${API_URL}/groups/${groupId}/expenses`);
       const expensesData = await expenseRes.json();
-      const expenseDetail = expensesData.find((e) => e.id === parseInt(expenseId));
-      setExpense(expenseDetail);
+      if (expenseRes.ok && Array.isArray(expensesData)) {
+        const expenseDetail = expensesData.find((e) => e.id === parseInt(expenseId));
+        setExpense(expenseDetail);
+      }
 
       // Load splits
       const splitsRes = await fetch(`${API_URL}/groups/expenses/${expenseId}/splits`);
       const splitsData = await splitsRes.json();
-      setSplits(splitsData);
+      console.log('Expense splits loaded:', { ok: splitsRes.ok, status: splitsRes.status, data: splitsData });
+      if (splitsRes.ok && Array.isArray(splitsData)) {
+        setSplits(splitsData);
+      } else {
+        setSplits([]);
+      }
     } catch (error) {
       console.error("Error loading expense detail:", error);
       Alert.alert("Error", "Failed to load expense details");
+      setSplits([]);
     } finally {
       setIsLoading(false);
     }

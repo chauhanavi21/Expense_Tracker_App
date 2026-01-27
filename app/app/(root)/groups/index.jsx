@@ -213,9 +213,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     padding: 16,
     borderRadius: 12,
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    marginBottom: 12,
   },
   groupIcon: {
     width: 48,
