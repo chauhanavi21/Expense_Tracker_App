@@ -1,6 +1,6 @@
 import { useUser } from "@clerk/clerk-expo";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { useEffect, useState, useCallback } from "react";
 import {
   Alert,
   ScrollView,
@@ -38,6 +38,15 @@ export default function GroupSettingsScreen() {
   useEffect(() => {
     loadData();
   }, [groupId]);
+
+  // Auto-refresh when screen comes into focus (to show updated names)
+  useFocusEffect(
+    useCallback(() => {
+      if (groupId) {
+        loadData();
+      }
+    }, [groupId])
+  );
 
   const loadData = async () => {
     try {
