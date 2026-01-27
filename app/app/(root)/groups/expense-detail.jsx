@@ -1,6 +1,6 @@
 import { useUser } from "@clerk/clerk-expo";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { useEffect, useState, useCallback } from "react";
 import {
   Alert,
   ScrollView,
@@ -29,6 +29,15 @@ export default function ExpenseDetailScreen() {
   useEffect(() => {
     loadExpenseDetail();
   }, [expenseId]);
+
+  // Auto-refresh when screen comes into focus (after editing)
+  useFocusEffect(
+    useCallback(() => {
+      if (expenseId && groupId) {
+        loadExpenseDetail();
+      }
+    }, [expenseId, groupId])
+  );
 
   const loadExpenseDetail = async () => {
     try {
@@ -60,6 +69,10 @@ export default function ExpenseDetailScreen() {
   const currencySymbol = group?.currency === "USD" ? "$" : "₹";
   const paidByYou = expense?.paid_by_user_id === user?.id;
 
+  const handleEdit = () => {
+    router.push(`/groups/edit-expense?expenseId=${expenseId}&groupId=${groupId}`);
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -69,7 +82,12 @@ export default function ExpenseDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Expense Details</Text>
-        <View style={{ width: 44 }} />
+        {paidByYou && (
+          <TouchableOpacity style={styles.editButton} onPress={handleEdit}>
+            <Ionicons name="create-outline" size={22} color={COLORS.primary} />
+          </TouchableOpacity>
+        )}
+        {!paidByYou && <View style={{ width: 44 }} />}
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -218,6 +236,16 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   backButton: {
+    padding: 10,
+    borderRadius: 20,
+    backgroundColor: COLORS.card,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  editButton: {
     padding: 10,
     borderRadius: 20,
     backgroundColor: COLORS.card,
