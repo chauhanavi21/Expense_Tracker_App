@@ -58,9 +58,9 @@ export default function AddGroupExpenseScreen() {
       const data = await response.json();
       console.log('Add-expense members response:', { ok: response.ok, status: response.status, data });
       setMembers(response.ok && Array.isArray(data) ? data : []);
-      // Auto-select current user as payer
+      
       setPaidBy(user.id);
-      // Auto-select current user in participants
+    
       setSelectedMembers([user.id]);
     } catch (error) {
       console.error("Error loading members:", error);
