@@ -427,7 +427,7 @@ const CategoryDonutChart = React.memo(({ data }) => {
       }}
       accessor="amount"
       backgroundColor="transparent"
-      paddingLeft="15"
+      paddingLeft="0"
       absolute
       hasLegend={false}
     />
@@ -500,16 +500,19 @@ function processChartData(rawData, timeframe) {
   }
 
   const now = new Date();
-  now.setHours(0, 0, 0, 0); // Start of today
+  const nowTime = now.getTime();
   
-  // Pre-calculate timeframe boundaries
-  let startDate;
+  // Pre-calculate timeframe boundaries (in milliseconds)
+  let startTime;
   if (timeframe === "day") {
-    startDate = now;
+    // Last 24 hours from now
+    startTime = nowTime - 24 * 60 * 60 * 1000;
   } else if (timeframe === "week") {
-    startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    // Last 7 days
+    startTime = nowTime - 7 * 24 * 60 * 60 * 1000;
   } else {
-    startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    // Last 30 days
+    startTime = nowTime - 30 * 24 * 60 * 60 * 1000;
   }
 
   // Single pass through data for filtering and aggregation (O(n) instead of multiple passes)
@@ -519,10 +522,10 @@ function processChartData(rawData, timeframe) {
 
   rawData.forEach((item) => {
     const itemDate = new Date(item.created_at);
-    itemDate.setHours(0, 0, 0, 0);
+    const itemTime = itemDate.getTime();
     
-    // Filter by timeframe
-    if (itemDate < startDate) return;
+    // Filter by timeframe - compare timestamps
+    if (itemTime < startTime) return;
     
     count++;
     const amount = Math.abs(parseFloat(item.amount || 0));
@@ -531,17 +534,31 @@ function processChartData(rawData, timeframe) {
     const category = (item.category || "other").toLowerCase();
     categoryMap[category] = (categoryMap[category] || 0) + amount;
     
-    // Time series aggregation
-    let key;
+    // Time series aggregation with proper date keys for sorting
+    let key, sortKey;
     if (timeframe === "day") {
-      key = itemDate.toLocaleDateString("en-US", { weekday: "short" });
+      // Group by hour for last 24 hours
+      const hour = itemDate.getHours();
+      sortKey = hour;
+      key = `${hour}:00`;
     } else if (timeframe === "week") {
+      // Group by day for last 7 days
+      const dayDate = new Date(itemDate);
+      dayDate.setHours(0, 0, 0, 0);
+      sortKey = dayDate.getTime();
       key = itemDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     } else {
-      const weekNum = getWeekNumber(itemDate);
-      key = `Week ${weekNum}`;
+      // Group by day for last 30 days
+      const dayDate = new Date(itemDate);
+      dayDate.setHours(0, 0, 0, 0);
+      sortKey = dayDate.getTime();
+      key = itemDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     }
-    timeMap[key] = (timeMap[key] || 0) + amount;
+    
+    if (!timeMap[key]) {
+      timeMap[key] = { total: 0, sortKey };
+    }
+    timeMap[key].total += amount;
   });
 
   const total = Object.values(categoryMap).reduce((sum, val) => sum + val, 0);
@@ -554,9 +571,12 @@ function processChartData(rawData, timeframe) {
     }))
     .sort((a, b) => b.total - a.total);
 
+  // Sort time series data chronologically and limit display
   const timeSeriesData = Object.entries(timeMap)
-    .map(([label, total]) => ({ label, total }))
-    .slice(0, 10); // Limit to 10 bars
+    .map(([label, data]) => ({ label, total: data.total, sortKey: data.sortKey }))
+    .sort((a, b) => a.sortKey - b.sortKey)
+    .slice(timeframe === "day" ? -24 : timeframe === "week" ? -7 : -30)
+    .map(({ label, total }) => ({ label, total }));
 
   return {
     categoryData,
