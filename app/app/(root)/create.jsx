@@ -8,9 +8,9 @@ import {
     ActivityIndicator,
   } from "react-native";
   import { useRouter } from "expo-router";
-  import { useUser } from "@clerk/clerk-expo";
+  import { useUser } from "@/context/auth";
   import { useState } from "react";
-  import { API_URL } from "../../constants/api";
+  import { apiFetch } from "@/lib/apiClient";
   import { styles } from "../../assets/styles/create.styles";
   import { COLORS } from "../../constants/colors";
   import { Ionicons } from "@expo/vector-icons";
@@ -49,7 +49,7 @@ import {
           ? -Math.abs(parseFloat(amount))
           : Math.abs(parseFloat(amount));
   
-        const response = await fetch(`${API_URL}/transactions`, {
+        const response = await apiFetch(`/transactions`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -2,7 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import { API_URL } from '../constants/api';
+import { apiFetch } from "@/lib/apiClient";
 
 // Check if we're running in Expo Go (SDK 53+ doesn't support push notifications in Expo Go)
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -65,7 +65,7 @@ export async function registerForPushNotificationsAsync(userId) {
       // Save token to backend
       if (token && userId) {
         try {
-          await fetch(`${API_URL}/notifications/register`, {
+          await apiFetch(`/notifications/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId, pushToken: token }),

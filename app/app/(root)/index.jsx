@@ -1,4 +1,4 @@
-import { SignedIn, SignedOut, useUser } from "@clerk/clerk-expo";
+import { SignedIn, SignedOut, useUser } from "@/context/auth";
 import { Link, useRouter, useFocusEffect } from "expo-router";
 import { Alert, FlatList, Image, RefreshControl, Text, TouchableOpacity, View, Platform, StatusBar } from "react-native";
 import { SignOutButton } from "@/components/SignOutButton";

@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@/context/auth";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -20,7 +20,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
-import { API_URL } from "../../../constants/api";
+import { apiFetch } from "@/lib/apiClient";
 
 const CATEGORIES = [
   { id: "food", name: "Food & Drinks", icon: "fast-food" },
@@ -54,7 +54,7 @@ export default function AddGroupExpenseScreen() {
 
   const loadMembers = async () => {
     try {
-      const response = await fetch(`${API_URL}/groups/${groupId}/members`);
+      const response = await apiFetch(`/groups/${groupId}/members`);
       const data = await response.json();
       console.log('Add-expense members response:', { ok: response.ok, status: response.status, data });
       setMembers(response.ok && Array.isArray(data) ? data : []);
@@ -176,11 +176,11 @@ export default function AddGroupExpenseScreen() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/groups/${groupId}/expenses`, {
+      const response = await apiFetch(`/groups/${groupId}/expenses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          groupId: parseInt(groupId),
+          groupId: String(groupId),
           description: description.trim(),
           amount: parseFloat(amount),
           paidBy: paidBy, // Use selected payer

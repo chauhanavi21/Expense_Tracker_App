@@ -1,0 +1,466 @@
+FIREBASE MIGRATION NOTES (Expo RN + Hosted Express Backend -> Firestore + Firebase Auth)
+Date: 2026-02-10 (updated during implementation)
+
+0) What this document is
+- A practical checklist + design guide for migrating ETApp from Neon/Postgres + Clerk to Firebase (Firestore + Firebase Auth), while preserving the current REST API behavior and edge cases.
+
+STATUS (implemented in this repo)
+- Backend remains hosted Express (no Cloud Functions). Firebase Admin SDK is used for Firestore + verifying Firebase Auth ID tokens.
+  - backend/src/config/firebase.js
+  - backend/src/middleware/firebaseAuth.js
+  - backend/src/server.js (protects /api/*, leaves /api/health public)
+- App uses Firebase Auth instead of Clerk and sends `Authorization: Bearer <idToken>` on API calls.
+  - app/lib/firebase.js
+  - app/context/auth.jsx
+  - app/lib/apiClient.js
+
+1) Current backend (source of truth in this repo)
+Backend entry and cross-cutting behavior:
+- backend/src/server.js
+  - Express API under /api/*
+  - Global Upstash sliding-window rate limit middleware applied to ALL requests
+  - Production cron job pings API_URL every 14 minutes
+- backend/src/config/upstash.js
+  - slidingWindow(100, "60 s")
+- backend/src/middleware/rateLimiter.js
+  - Uses a single key "my-rate-limit" for all requests (GLOBAL limiter; not per-user)
+- backend/src/config/cron.js
+  - GET process.env.API_URL every 14 minutes in production
+
+API routes (exact paths):
+- /api/transactions
+  - GET    /:userId
+  - GET    /summary/:userId
+  - POST   /
+  - DELETE /:id
+  - DELETE /user/:userId
+- /api/groups
+  - POST   /
+  - POST   /join
+  - POST   /leave
+  - GET    /user/:userId
+  - GET    /:groupId
+  - PUT    /:groupId
+  - GET    /:groupId/members
+  - POST   /:groupId/expenses
+  - GET    /:groupId/expenses
+  - PUT    /expenses/:expenseId
+  - DELETE /expenses/:expenseId
+  - GET    /expenses/:expenseId/splits
+  - GET    /:groupId/balance/:userId
+  - POST   /settle
+  - POST   /smart-split/toggle
+- /api/users
+  - PUT    /profile
+  - GET    /profile/:userId
+- /api/notifications
+  - POST   /register
+  - POST   /unregister
+
+Push notifications:
+- backend/src/utils/pushNotifications.js
+  - notifyGroupMembers(groupId, excludeUserId, ...)
+    - reads groups/{groupId}/members + userTokens/{uid}
+    - filters invalid Expo tokens; if none, no-op
+    - catches Expo send errors (logs; does not fail the API request)
+  - notifyUser(userId, ...)
+
+2) Important mismatch to notice (do NOT ignore during migration)
+Your request listed validations/edge cases that MUST be preserved. Some of them are not currently enforced by the code in this repo.
+That matters because migrating to Firebase is a chance to (a) keep current behavior for compatibility AND (b) add missing protections to meet the stricter spec.
+
+Examples from current code:
+- POST /api/transactions currently checks missing fields only; it does NOT reject negative/zero amounts.
+- POST /api/groups/:groupId/expenses does not:
+  - validate amount > 0
+  - validate that split users are group members
+  - validate that custom splits sum to the expense
+- PUT /api/groups/expenses/:expenseId currently does not verify the editor is the payer/owner.
+
+If your requirement is “must reproduce edge cases” (negative/zero rejection, split sums, payer membership checks, etc.), implement them explicitly in the Firebase rewrite even if the current Postgres code is lax.
+
+3) Migration decision: keep REST API or go “direct Firestore”?
+You said: “redesign every API and data access path to work with Firestore queries and Cloud Functions while preserving validations, aggregations, and notifications.”
+The lowest-risk way to do that (without rewriting the mobile app’s networking layer) is:
+
+Chosen approach (compatibility + lowest app rewrite):
+- Keep the same REST API paths and keep the hosted Express backend.
+- Replace Postgres queries with Firestore reads/writes (Firebase Admin SDK).
+- Replace Clerk auth with Firebase Auth ID tokens verified on the backend.
+
+Option B (bigger mobile rewrite):
+- Move reads/writes to client-side Firestore SDK + Firestore Security Rules.
+- Use Cloud Functions triggers for derived data and notifications.
+- Still keep a few callable/HTTPS functions for “hard” server-side invariants (join-by-code, settlement, idempotency coordination).
+
+Given your emphasis on preserving server logic and edge cases, Option A is the practical first migration step.
+
+4) Authentication: Clerk + Firebase is not “plug-and-play”
+Firestore Security Rules are designed around Firebase Auth tokens.
+If you keep Clerk as-is, you have 2 viable patterns:
+
+Pattern 1 (simplest): Server-only Firestore access
+- Keep Clerk on the client.
+- Client calls your HTTPS functions (REST endpoints).
+- Functions verify Clerk JWTs (or call Clerk API) and then use Firestore Admin SDK.
+- Firestore rules don’t matter because Admin bypasses rules; your server code must enforce every permission.
+
+Pattern 2 (hybrid): Bridge Clerk -> Firebase Auth custom tokens
+- Use a backend function to verify Clerk session and mint a Firebase custom token.
+- Client signs into Firebase Auth with that custom token.
+- Now you can use Firestore rules for some read paths.
+- Still keep server functions for complex multi-doc invariants and idempotency.
+
+For a first migration that preserves current flows, Pattern 1 is usually fastest.
+
+5) Firestore data model (designed to replace SQL joins)
+Firestore is document-based: joins/aggregations are expensive unless you denormalize or maintain computed documents.
+A workable model for this app:
+
+Collections (suggested):
+- users/{userId}
+  - userName (canonical display name)
+  - updatedAt
+  - groupCount (optional derived)
+- userTokens/{userId}
+  - pushToken
+  - updatedAt
+
+Personal transactions:
+- users/{userId}/transactions/{transactionId}
+  - title
+  - amount (number)
+  - category
+  - createdAt
+
+Groups:
+- groups/{groupId}
+  - name
+  - code (6 chars)
+  - createdBy
+  - currency
+  - smartSplitEnabled
+  - createdAt
+  - memberCount (derived)
+
+Membership (denormalized):
+- groups/{groupId}/members/{userId}
+  - userName (snapshot)
+  - joinedAt
+- users/{userId}/groups/{groupId}
+  - joinedAt
+  - groupNameSnapshot (optional)
+
+Expenses:
+- groups/{groupId}/expenses/{expenseId}
+  - description
+  - amount
+  - category
+  - paidByUserId
+  - paidByUserNameSnapshot (optional)
+  - createdAt
+  - updatedAt
+  - splits: [ { userId, userNameSnapshot?, amountOwed, isSettled, settledAt? } ]
+
+Balances (critical for performance):
+- groups/{groupId}/balances/{userId}
+  - totalPaid (others owe user)
+  - totalOwed (user owes others)
+  - netBalance
+  - owesMeBreakdown: { otherUserId: amount }
+  - iOweBreakdown: { otherUserId: amount }
+  - updatedAt
+
+Group code uniqueness:
+- groupCodes/{CODE}
+  - groupId
+  - createdAt
+
+Idempotency (prevent duplicate writes on retries):
+- idempotency/{userId}/keys/{key}
+  - operation (string)
+  - requestHash
+  - response (optional cached)
+  - createdAt
+
+Why these denormalizations exist:
+- Firestore cannot “JOIN group_members + user_tokens” cheaply; membership and tokens must be queryable without joins.
+- Balance endpoints become expensive if you scan every expense each time; maintain group/user balance docs.
+
+6) Concurrency + race conditions: use Firestore transactions + preconditions
+You explicitly called out: concurrent joins, concurrent edits, network retries, and duplicate writes.
+Firestore offers:
+- Transactions (read -> validate -> write atomically)
+- Batched writes (atomic write set; no reads)
+- Precondition updates (update only if version matches)
+
+You MUST use transactions for these flows:
+A) Create group code (collision avoidance)
+- In a transaction, attempt to create groupCodes/{CODE} with create() (fails if exists).
+- If exists, retry with a new code; cap at 10 attempts to match existing semantics.
+- If 10 attempts exhausted: fail with 500 “Failed to generate unique code”.
+
+B) Join group
+- Transaction steps:
+  1) Resolve code -> groupId via groupCodes/{CODE}. If missing: 404.
+  2) Read groups/{groupId} to ensure exists and not deleting.
+  3) Check groups/{groupId}/members/{userId} does not exist.
+  4) Create member doc, create user->group doc, increment group.memberCount.
+  5) Upsert users/{userId}.userName if provided.
+- This prevents the classic race: two concurrent join requests for same user.
+
+C) Add / update / delete group expense
+- Add: Transaction validates membership + validates splits + writes expense + updates derived balances.
+- Update: Transaction reads existing expense, verifies ownership/payer, replaces splits, and adjusts balances by applying a delta.
+- Delete: Transaction verifies ownership/payer, deletes expense, and reverses balances.
+
+D) Settle
+- Transaction reads the group balances and/or the specific unsettled splits between fromUserId and toUserId.
+- Marks splits settled and updates balance docs consistently.
+
+7) Validations and edge cases to reproduce (explicit checklist)
+You asked that these edge cases must be reproduced. Here is the Firebase-side plan for each.
+
+Input validation (IDs, amounts, required fields)
+- Reject missing/empty IDs: return 400
+- Reject invalid IDs (wrong type/format): return 400
+- Reject amount <= 0 (for endpoints that require positive expenses) OR mirror current semantics if negatives are meaningful.
+  - Personal transactions in this app appear to use positive (income) and negative (expense). If you want “no zero” and allow negatives, enforce amount != 0.
+  - For group expenses, enforce amount > 0.
+
+Duplicate group code after ten retries
+- Implement groupCodes collection with transaction create(). Retry <= 10. On failure: 500 with same message.
+
+Concurrent joins or expense edits causing race conditions
+- Use Firestore transactions.
+- For edits, use “read expense -> verify payer -> update” in transaction.
+- Optionally include an “updatedAt” or “version” field and require the client to pass lastSeenVersion to prevent lost updates.
+
+Custom splits that don’t sum to the expense
+- Validate sum(splits.amountOwed) == amount within rounding tolerance.
+- Prefer integer cents everywhere to avoid floating point issues.
+  - Store amounts in cents: amountCents, amountOwedCents.
+
+Negative or zero amounts
+- Enforce:
+  - Personal: amount != 0 (and required)
+  - Group expense: amount > 0
+
+Payers or split users not belonging to the group
+- In the transaction, verify:
+  - payer is a member
+  - every split.userId is a member
+- Fail with 403 if not a member.
+
+Users with unsettled debts trying to leave
+- Use balances doc groups/{groupId}/balances/{userId}:
+  - If totalPaid != 0 or totalOwed != 0 (or netBalance != 0), block leave.
+- If you keep the split-level state, additionally ensure no unsettled splits exist.
+
+Attempts to delete expenses by non-payers
+- Expense doc contains paidByUserId. If requester != paidByUserId -> 403.
+
+Absence of push tokens or Expo downtime
+- Keep notification sends “best effort”:
+  - If token missing/invalid -> no-op
+  - If Expo throws -> log and continue (do not fail the main write)
+
+Network retries causing duplicate writes
+- Require idempotency keys for mutating endpoints:
+  - e.g., header Idempotency-Key or body.idempotencyKey
+- On first request, create idempotency doc in a transaction.
+- If key already exists with same request hash, return stored response.
+- If key exists with different hash, return 409.
+
+Rate limit and cron affecting user experience
+- Current behavior is GLOBAL rate limiting (single key). If reproduced exactly, one noisy client can throttle everyone.
+- Decide explicitly:
+  - “Exact migration” mode: keep Upstash + global key.
+  - “Better behavior” mode: key by userId and/or IP to match typical expectations.
+- Cron ping: with Firebase Functions/Cloud Run, you generally don’t need keep-warm pings.
+  - If you still want it, use Cloud Scheduler to hit /api/health.
+
+8) Re-implementing each endpoint in Firebase terms
+Below is the minimum server-side behavior to preserve, with Firestore-backed logic.
+
+Personal transactions
+A) GET /api/transactions/:userId
+- Read users/{userId}/transactions ordered by createdAt desc.
+- Enforce: requester must be that user (or admin).
+
+B) GET /api/transactions/summary/:userId
+- Don’t scan all transactions on every request if the user can have many.
+- Maintain a derived doc users/{userId}/transactionSummary:
+  - balance, income, expenses
+- Update it via:
+  - Cloud Function triggers on create/delete transaction
+  - OR update within the same transaction that creates/deletes the transaction.
+
+C) POST /api/transactions
+- Validate required fields.
+- Decide semantics:
+  - Allow negative for expenses, positive for income, reject 0.
+- Use idempotency key to avoid duplicates on retries.
+
+D) DELETE /api/transactions/:id
+- In Firestore there is no global numeric id unless you design one.
+- Either:
+  1) change the API to delete by transactionId (doc id), OR
+  2) store an index mapping numeric IDs -> doc paths.
+- Practical approach: migrate to document IDs and update the mobile client.
+
+E) DELETE /api/transactions/user/:userId
+- Bulk delete a subcollection:
+  - Use Admin SDK recursive delete.
+  - Update summary doc to zeros.
+- Make it idempotent.
+
+Groups and membership
+A) POST /api/groups
+- Transaction:
+  - generate code via groupCodes/{CODE} create() with retry
+  - create groups/{groupId}
+  - create member doc for creator
+  - create user->group doc
+  - upsert canonical user name
+
+B) POST /api/groups/join
+- Transaction:
+  - resolve code -> groupId
+  - ensure not already member
+  - create membership docs
+  - upsert canonical user name
+- Notification:
+  - after commit, send push notifications to other members.
+  - Prefer “after commit” to avoid sending a push for a transaction that ultimately fails.
+
+C) POST /api/groups/leave
+- Transaction:
+  - verify membership exists
+  - verify no unsettled debts
+  - delete membership docs
+  - decrement memberCount
+  - if now 0 members: mark group as deleting and enqueue async cleanup.
+- Async cleanup:
+  - recursive delete expenses subcollection, balances, etc.
+
+Group expenses
+A) POST /api/groups/:groupId/expenses
+- Must validate:
+  - payer member
+  - splits non-empty
+  - split users members
+  - split amounts valid
+  - sum matches expense
+- Write:
+  - create expense doc (with split state)
+  - update balances docs for affected users
+- Notify group members (best-effort)
+
+B) PUT /api/groups/expenses/:expenseId
+- Must validate:
+  - expense exists
+  - requester == paidByUserId
+  - splits valid
+- Update:
+  - compute delta between old splits and new splits
+  - update expense
+  - update balances
+- Notify group members about edit
+
+C) DELETE /api/groups/expenses/:expenseId
+- Validate requester == paidByUserId
+- Delete expense + adjust balances
+- Notify group members about deletion
+
+Balance and settlement
+A) GET /api/groups/:groupId/balance/:userId
+- Return balances doc for that user.
+- If balances are derived, ensure they are updated synchronously on writes.
+
+B) POST /api/groups/settle
+- Transaction:
+  - verify debts exist between fromUserId and toUserId
+  - mark relevant splits settled
+  - update balances docs
+- Notify payee
+
+User profile
+A) PUT /api/users/profile
+- Update users/{userId}.userName
+- Update all groups/{groupId}/members/{userId}.userName snapshot
+  - This is multi-document fanout; can be large.
+  - Implement with a background function (queue) if needed.
+
+B) GET /api/users/profile/:userId
+- Read users/{userId}
+- groupCount can be:
+  - stored as derived field on users/{userId}
+  - or counted by reading users/{userId}/groups (costly)
+
+Notifications
+A) POST /api/notifications/register
+- Upsert userTokens/{userId}
+
+B) POST /api/notifications/unregister
+- Delete userTokens/{userId}
+
+9) Data migration plan (Postgres -> Firestore)
+You need an offline migration script that:
+- Exports Postgres tables: users, user_tokens, transactions, groups, group_members, group_expenses, expense_splits
+- Creates Firestore docs following your chosen model.
+
+Key gotchas:
+- Numeric IDs (transactions.id, groups.id, group_expenses.id) will not match Firestore doc IDs unless you deliberately preserve them.
+- If the mobile app expects numeric IDs in URLs, you will need either:
+  - a compatibility layer (mapping table), or
+  - a client update to use Firestore doc IDs.
+- Use cents not floats when migrating amounts.
+
+10) Testing / verification checklist (must be done before declaring success)
+- Validation tests:
+  - missing fields -> 400
+  - invalid IDs -> 400
+  - amount == 0 -> 400
+  - group expense amount <= 0 -> 400
+  - split sum mismatch -> 400
+  - split user not member -> 403
+  - payer not member -> 403
+  - delete expense by non-payer -> 403
+- Concurrency:
+  - two concurrent join requests -> only one membership created
+  - two concurrent group create operations -> codes remain unique
+  - concurrent expense edits -> no lost updates (versioning or transaction logic)
+- Idempotency:
+  - retry POST transaction with same idempotency key -> no duplicate
+  - same key, different payload -> 409
+- Notifications:
+  - no token -> no-op
+  - Expo error -> write still succeeds
+- Rate limiting:
+  - confirm limiter behavior matches chosen semantics (global vs per-user)
+- Leave group:
+  - unsettled debts -> blocked
+  - last member -> group cleanup path works
+
+11) What you need to build (minimum set)
+- Firestore schema + indexes (code lookup; expenses ordering; user group listing)
+- Cloud Functions (HTTPS) implementing the current REST endpoints
+- Transactional logic + idempotency store
+- Derived-balance maintenance (prefer synchronous update in write transactions)
+- Notification sender module (Expo), best-effort
+- Optional Cloud Scheduler job for health ping (if still required)
+- One-time migration script + verification queries
+
+12) Bottom line
+You can’t “swap Postgres for Firebase.”
+To migrate safely you must redesign:
+- data model (denormalize and/or maintain computed docs)
+- atomicity (Firestore transactions instead of SQL transactions/constraints)
+- uniqueness (group code mapping docs)
+- aggregations (summary/balance maintained explicitly)
+- idempotency (network retries)
+- permission checks (server-side if Clerk remains)
+- background cleanup for cascading deletes
+
+End of document.

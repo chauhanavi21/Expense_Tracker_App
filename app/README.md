@@ -46,7 +46,12 @@ npm install
 Create a `.env` file in the `app/` directory:
 
 ```env
-EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key_here
+EXPO_PUBLIC_FIREBASE_API_KEY=...
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=...
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=...
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+EXPO_PUBLIC_FIREBASE_APP_ID=...
 ```
 
 ### 3. Update API URL
@@ -76,7 +81,7 @@ In the output, you'll find options to open the app in:
 ```
 app/
 ├── app/                      # File-based routing (Expo Router)
-│   ├── _layout.jsx          # Root layout with Clerk provider
+│   ├── _layout.jsx          # Root layout with AuthProvider
 │   ├── (auth)/              # Authentication screens
 │   │   ├── sign-in.jsx     # Sign in screen
 │   │   └── sign-up.jsx     # Sign up screen
@@ -147,7 +152,7 @@ const myTheme = {
 
 - **Expo SDK 54**: Cross-platform mobile framework
 - **Expo Router**: File-based navigation
-- **Clerk**: Authentication provider
+- **Firebase Auth**: Authentication provider
 - **React Native**: UI framework
 - **Expo Notifications**: Push notifications
 - **Ionicons**: Icon library
@@ -155,7 +160,7 @@ const myTheme = {
 ## 📱 Screen Flows
 
 ### Authentication Flow
-1. Sign In / Sign Up screens (Clerk)
+1. Sign In / Sign Up screens (Firebase Auth)
 2. Redirect to Dashboard after successful auth
 
 ### Personal Expense Flow
@@ -230,20 +235,21 @@ The app uses React Hooks for state management:
 
 - `useState` - Local component state
 - `useEffect` - Side effects and data fetching
-- `useUser` - Clerk authentication state
+- `useUser` - Authentication state (Firebase Auth via `context/auth.jsx`)
 - `useRouter` - Navigation
 - `useLocalSearchParams` - Route parameters
 
 ## 🌐 API Integration
 
-All API calls use `fetch` with the base URL from `constants/api.js`:
+All API calls should use `apiFetch` which automatically attaches the Firebase ID token:
 
 ```javascript
 import { API_URL } from "../constants/api";
 
-const response = await fetch(`${API_URL}/groups/${groupId}`, {
+import { apiFetch } from "@/lib/apiClient";
+
+const response = await apiFetch(`/groups/${groupId}`, {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
   body: JSON.stringify(data),
 });
 
@@ -302,10 +308,10 @@ rm -rf node_modules
 npm install
 ```
 
-### Clerk Authentication Issues
-- Verify `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` in `.env`
-- Check Clerk dashboard for correct key
-- Ensure development URLs are whitelisted in Clerk
+### Firebase Authentication Issues
+- Verify `EXPO_PUBLIC_FIREBASE_*` vars exist in `app/.env`
+- Ensure Firebase Auth is enabled in your Firebase project
+- If actions fail with `auth/requires-recent-login`, sign out/in and retry
 
 ### Navigation Issues
 - Ensure all screens are in correct folder structure
@@ -329,8 +335,7 @@ npm install
 - [React Native Components](https://reactnative.dev/docs/components-and-apis)
 
 ### Authentication
-- [Clerk Documentation](https://clerk.com/docs)
-- [Clerk with Expo](https://clerk.com/docs/quickstarts/expo)
+- [Firebase Auth Docs](https://firebase.google.com/docs/auth)
 
 ## 🎨 Design System
 

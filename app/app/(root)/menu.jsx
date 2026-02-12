@@ -1,9 +1,11 @@
-import { useUser, useClerk } from "@clerk/clerk-expo";
+import { useUser, useClerk } from "@/context/auth";
 import { useRouter } from "expo-router";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
-import { API_URL } from "../../constants/api";
+import { apiFetch } from "@/lib/apiClient";
+import { auth } from "@/lib/firebase";
+import { deleteUser } from "firebase/auth";
 
 const formatSince = (value) => {
   if (!value) return "";
@@ -41,18 +43,28 @@ export default function MenuScreen() {
           onPress: async () => {
             try {
               // First delete all user's transactions from the database
-              await fetch(`${API_URL}/transactions/user/${user.id}`, {
+              await apiFetch(`/transactions/user/${user.id}`, {
                 method: "DELETE",
               });
 
-              // Then delete the Clerk account
-              await user.delete();
+              // Then delete the Firebase account
+              if (auth.currentUser) {
+                await deleteUser(auth.currentUser);
+              }
 
               Alert.alert("Success", "Your account has been deleted.");
               router.replace("/sign-in");
             } catch (error) {
               console.error("Error deleting account:", error);
-              Alert.alert("Error", "Failed to delete account. Please try again.");
+              const code = error?.code || "";
+              if (code === "auth/requires-recent-login") {
+                Alert.alert(
+                  "Re-authentication required",
+                  "For security, please sign out and sign in again, then retry deleting your account."
+                );
+              } else {
+                Alert.alert("Error", "Failed to delete account. Please try again.");
+              }
             }
           },
         },

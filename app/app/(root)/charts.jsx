@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@/context/auth";
 import { useRouter, useFocusEffect } from "expo-router";
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
@@ -16,7 +16,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { PieChart } from "react-native-chart-kit";
 import { COLORS } from "../../constants/colors";
-import { API_URL } from "../../constants/api";
+import { apiFetch } from "@/lib/apiClient";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CHART_WIDTH = SCREEN_WIDTH - 40;
@@ -118,7 +118,7 @@ export default function ChartsScreen() {
 
   const loadPersonalData = async () => {
     try {
-      const response = await fetch(`${API_URL}/transactions/${user.id}`);
+      const response = await apiFetch(`/transactions/${user.id}`);
       if (!response.ok) throw new Error("Failed to fetch transactions");
       const data = await response.json();
       // Filter expenses: either type === "expense" OR negative amount (expense is negative in our app)
@@ -140,7 +140,7 @@ export default function ChartsScreen() {
   const loadGroupData = async () => {
     try {
       // Load user's groups
-      const groupsRes = await fetch(`${API_URL}/groups/user/${user.id}`);
+      const groupsRes = await apiFetch(`/groups/user/${user.id}`);
       if (!groupsRes.ok) throw new Error("Failed to fetch groups");
       const groupsData = await groupsRes.json();
       const groupsList = Array.isArray(groupsData) ? groupsData : [];
@@ -154,7 +154,7 @@ export default function ChartsScreen() {
       // Load expenses for selected group
       if (selectedGroupId || groupsList.length > 0) {
         const groupId = selectedGroupId || groupsList[0].id;
-        const expensesRes = await fetch(`${API_URL}/groups/${groupId}/expenses`);
+        const expensesRes = await apiFetch(`/groups/${groupId}/expenses`);
         if (!expensesRes.ok) throw new Error("Failed to fetch group expenses");
         const expensesData = await expensesRes.json();
         setGroupExpenses(Array.isArray(expensesData) ? expensesData : []);

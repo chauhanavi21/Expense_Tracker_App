@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@/context/auth";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
-import { API_URL } from "../../../constants/api";
+import { apiFetch } from "@/lib/apiClient";
 import PageLoader from "../../../components/PageLoader";
 
 export default function ExpenseDetailScreen() {
@@ -43,22 +43,22 @@ export default function ExpenseDetailScreen() {
   const loadExpenseDetail = async () => {
     try {
       // Load group info for currency
-      const groupRes = await fetch(`${API_URL}/groups/${groupId}`);
+      const groupRes = await apiFetch(`/groups/${groupId}`);
       const groupData = await groupRes.json();
       if (groupRes.ok) {
         setGroup(groupData);
       }
 
       // Load expense details
-      const expenseRes = await fetch(`${API_URL}/groups/${groupId}/expenses`);
+      const expenseRes = await apiFetch(`/groups/${groupId}/expenses`);
       const expensesData = await expenseRes.json();
       if (expenseRes.ok && Array.isArray(expensesData)) {
-        const expenseDetail = expensesData.find((e) => e.id === parseInt(expenseId));
+        const expenseDetail = expensesData.find((e) => String(e.id) === String(expenseId));
         setExpense(expenseDetail);
       }
 
       // Load splits
-      const splitsRes = await fetch(`${API_URL}/groups/expenses/${expenseId}/splits`);
+      const splitsRes = await apiFetch(`/groups/expenses/${expenseId}/splits?groupId=${encodeURIComponent(String(groupId))}`);
       const splitsData = await splitsRes.json();
       console.log('Expense splits loaded:', { ok: splitsRes.ok, status: splitsRes.status, data: splitsData });
       if (splitsRes.ok && Array.isArray(splitsData)) {
@@ -99,13 +99,14 @@ export default function ExpenseDetailScreen() {
           onPress: async () => {
             setIsDeleting(true);
             try {
-              const response = await fetch(`${API_URL}/groups/expenses/${expenseId}`, {
+              const response = await apiFetch(`/groups/expenses/${expenseId}`, {
                 method: "DELETE",
                 headers: {
                   "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
                   userId: user?.id,
+                  groupId: String(groupId),
                 }),
               });
 

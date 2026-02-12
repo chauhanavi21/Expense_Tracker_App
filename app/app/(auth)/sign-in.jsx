@@ -1,4 +1,3 @@
-import { useSignIn } from "@clerk/clerk-expo";
 import { Link, useRouter } from "expo-router";
 import { Text, TextInput, TouchableOpacity, View, Image } from "react-native";
 import { useState } from "react";
@@ -6,31 +5,25 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import { styles } from "../../assets/styles/auth.styles";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 export default function Page() {
-  const { signIn, setActive, isLoaded } = useSignIn();
   const router = useRouter();
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const onSignInPress = async () => {
-    if (!isLoaded) return;
     try {
-      const signInAttempt = await signIn.create({
-        identifier: emailAddress,
-        password,
-      });
-
-      if (signInAttempt.status === "complete") {
-        await setActive({ session: signInAttempt.createdSessionId });
-        router.replace("/");
-      } else {
-        console.error(JSON.stringify(signInAttempt, null, 2));
-      }
+      await signInWithEmailAndPassword(auth, emailAddress.trim(), password);
+      router.replace("/");
     } catch (err) {
-      if (err.errors?.[0]?.code === "form_password_incorrect") {
-        setError("Password is incorrect. Please try again.");
+      const code = err?.code || "";
+      if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
+        setError("Email or password is incorrect. Please try again.");
+      } else if (code === "auth/invalid-email") {
+        setError("Please enter a valid email address.");
       } else {
         setError("An error occurred. Please try again.");
       }

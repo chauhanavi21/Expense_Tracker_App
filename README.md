@@ -47,7 +47,7 @@ A full-stack mobile expense tracking application with advanced group splitting f
 ### Mobile App (`/app`)
 - **Framework**: Expo (SDK 54) + React Native
 - **Navigation**: Expo Router (file-based routing)
-- **Authentication**: Clerk
+- **Authentication**: Firebase Auth
 - **UI**: React Native components with custom styling
 - **State Management**: React Hooks
 - **Notifications**: Expo Notifications
@@ -55,7 +55,7 @@ A full-stack mobile expense tracking application with advanced group splitting f
 ### Backend API (`/backend`)
 - **Runtime**: Node.js
 - **Framework**: Express.js
-- **Database**: Neon Postgres (serverless)
+- **Database**: Firestore (via Firebase Admin SDK)
 - **Rate Limiting**: Upstash Redis
 - **Cron Jobs**: node-cron (keep-alive ping)
 - **Real-time**: Push notifications via Expo
@@ -94,9 +94,8 @@ ETApp/
 - **Node.js**: 20.19.x or newer (required for Expo SDK 54)
 - **npm**: Comes with Node.js
 - **Expo CLI**: Installed globally or via npx
-- **PostgreSQL Database**: Neon or any Postgres provider
+- **Firebase Project**: Firestore + Firebase Auth enabled
 - **Redis**: Upstash for rate limiting
-- **Clerk Account**: For authentication
 
 ## 📦 Installation
 
@@ -122,12 +121,19 @@ npm install
 
 ### Mobile App (`app/.env`)
 ```env
-EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+EXPO_PUBLIC_FIREBASE_API_KEY=...
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=...
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=...
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+EXPO_PUBLIC_FIREBASE_APP_ID=...
 ```
 
 ### Backend (`backend/.env`)
 ```env
-DATABASE_URL=your_neon_postgres_connection_string
+# Firebase Admin
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"..."}
+
 UPSTASH_REDIS_REST_URL=your_upstash_redis_url
 UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_token
 API_URL=https://your-api-url.com/api/health
@@ -258,9 +264,9 @@ npx expo start --clear
 ```
 
 ### Database Connection Issues
-- Verify `DATABASE_URL` in `backend/.env`
-- Check Neon dashboard for database status
-- Ensure IP is whitelisted in Neon settings
+- Verify `FIREBASE_SERVICE_ACCOUNT_JSON` (or `GOOGLE_APPLICATION_CREDENTIALS`) is set for the backend
+- Ensure Firestore is enabled in your Firebase project
+- If deployed, confirm the host has access to Google credentials
 
 ### Rate Limiting Errors
 - Verify Upstash Redis credentials
@@ -280,9 +286,9 @@ npx expo start --clear
 
 ## 🔒 Security Features
 
-- ✅ JWT-based authentication via Clerk
+- ✅ Firebase Auth ID token authentication
 - ✅ Rate limiting on all API endpoints
-- ✅ SQL injection prevention (parameterized queries)
+- ✅ Firestore access via Firebase Admin SDK
 - ✅ Authorization checks (users can only modify their own data)
 - ✅ Environment variable protection
 - ✅ HTTPS in production
@@ -293,22 +299,20 @@ npx expo start --clear
 - Recommended: Render, Railway, or Heroku
 - Set all environment variables
 - Set `NODE_ENV=production`
-- Database: Use Neon (serverless Postgres)
+- Database: Firestore (Firebase)
 
 ### Mobile App
 - Build with EAS (Expo Application Services)
 - Submit to App Store / Google Play
 - Configure app.json with proper bundle identifiers
 
-## 📄 Database Schema
+## 📄 Data Model
 
-Key tables:
-- `transactions` - Personal expense records
-- `groups` - Group information and codes
-- `group_members` - User memberships with names
-- `group_expenses` - Group expense records
-- `expense_splits` - How expenses are divided
-- `user_tokens` - Push notification tokens
+Firestore collections (high level):
+- `users/{uid}` + `users/{uid}/transactions/*`
+- `groups/{groupId}` + subcollections `members/*`, `expenses/*`, `splits/*`
+- `groupCodes/{code}` (join-code mapping)
+- `userTokens/{uid}` (Expo push token)
 
 ## 🤝 Contributing
 
@@ -329,8 +333,7 @@ Built with ❤️ by the ETApp team
 ## 🙏 Acknowledgments
 
 - Expo team for the amazing framework
-- Clerk for seamless authentication
-- Neon for serverless Postgres
+- Firebase for authentication and Firestore
 - Upstash for Redis rate limiting
 - React Native community
 

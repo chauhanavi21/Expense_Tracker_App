@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@/context/auth";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
-import { API_URL } from "../../../constants/api";
+import { apiFetch } from "@/lib/apiClient";
 import PageLoader from "../../../components/PageLoader";
 
 export default function GroupDetailScreen() {
@@ -41,24 +41,24 @@ export default function GroupDetailScreen() {
       };
 
       // Load group details
-      const groupRes = await fetch(`${API_URL}/groups/${id}`);
+      const groupRes = await apiFetch(`/groups/${id}`);
       const groupData = await safeJson(groupRes);
       if (groupRes.ok) {
         setGroup(groupData);
       }
 
       // Load expenses
-      const expensesRes = await fetch(`${API_URL}/groups/${id}/expenses`);
+      const expensesRes = await apiFetch(`/groups/${id}/expenses`);
       const expensesData = await safeJson(expensesRes);
       setExpenses(expensesRes.ok && Array.isArray(expensesData) ? expensesData : []);
 
       // Load members
-      const membersRes = await fetch(`${API_URL}/groups/${id}/members`);
+      const membersRes = await apiFetch(`/groups/${id}/members`);
       const membersData = await safeJson(membersRes);
       setMembers(membersRes.ok && Array.isArray(membersData) ? membersData : []);
 
       // Load balance
-      const balanceRes = await fetch(`${API_URL}/groups/${id}/balance/${user.id}`);
+      const balanceRes = await apiFetch(`/groups/${id}/balance/${user.id}`);
       const balanceData = await safeJson(balanceRes);
       const net = Number(balanceData?.netBalance);
       setBalance({

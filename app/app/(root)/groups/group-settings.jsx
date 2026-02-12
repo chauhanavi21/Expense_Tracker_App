@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@/context/auth";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -19,7 +19,7 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
-import { API_URL } from "../../../constants/api";
+import { apiFetch } from "@/lib/apiClient";
 import PageLoader from "../../../components/PageLoader";
 
 export default function GroupSettingsScreen() {
@@ -59,7 +59,7 @@ export default function GroupSettingsScreen() {
   const loadData = async () => {
     try {
       // Load group details
-      const groupRes = await fetch(`${API_URL}/groups/${groupId}`);
+      const groupRes = await apiFetch(`/groups/${groupId}`);
       const groupData = await groupRes.json();
       if (!groupRes.ok) throw new Error(groupData?.message || "Failed to load group");
       setGroup(groupData);
@@ -67,14 +67,14 @@ export default function GroupSettingsScreen() {
       setEditedGroupName(groupData?.name || "");
 
       // Load members
-      const membersRes = await fetch(`${API_URL}/groups/${groupId}/members`);
+      const membersRes = await apiFetch(`/groups/${groupId}/members`);
       const membersData = await membersRes.json();
       console.log('Group settings members:', { ok: membersRes.ok, data: membersData });
       setMembers(membersRes.ok ? safeArray(membersData) : []);
 
       // Load current user's balance (used for direct settle-up when Smart Split is off)
       if (user?.id) {
-        const balanceRes = await fetch(`${API_URL}/groups/${groupId}/balance/${user.id}`);
+        const balanceRes = await apiFetch(`/groups/${groupId}/balance/${user.id}`);
         const balanceData = await balanceRes.json();
         console.log('Group settings balance:', { ok: balanceRes.ok, status: balanceRes.status, data: balanceData });
         setBalance(balanceRes.ok ? balanceData : null);
@@ -91,7 +91,7 @@ export default function GroupSettingsScreen() {
 
   const toggleSmartSplitSetting = async (enabled) => {
     try {
-      const response = await fetch(`${API_URL}/groups/smart-split/toggle`, {
+      const response = await apiFetch(`/groups/smart-split/toggle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -124,7 +124,7 @@ export default function GroupSettingsScreen() {
 
     setIsSavingGroupName(true);
     try {
-      const response = await fetch(`${API_URL}/groups/${groupId}`, {
+      const response = await apiFetch(`/groups/${groupId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed, userId: user?.id }),
@@ -178,7 +178,7 @@ export default function GroupSettingsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              const response = await fetch(`${API_URL}/groups/leave`, {
+              const response = await apiFetch(`/groups/leave`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -230,9 +230,7 @@ export default function GroupSettingsScreen() {
 
       for (const member of members) {
         memberNames[member.user_id] = member.user_name;
-        const balanceRes = await fetch(
-          `${API_URL}/groups/${groupId}/balance/${member.user_id}`
-        );
+        const balanceRes = await apiFetch(`/groups/${groupId}/balance/${member.user_id}`);
         const balanceData = await balanceRes.json();
         balances[member.user_id] = balanceData.netBalance;
       }
@@ -347,7 +345,7 @@ export default function GroupSettingsScreen() {
           text: "Settle Up",
           onPress: async () => {
             try {
-              const response = await fetch(`${API_URL}/groups/settle`, {
+              const response = await apiFetch(`/groups/settle`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -385,7 +383,7 @@ export default function GroupSettingsScreen() {
           text: "Settle Up",
           onPress: async () => {
             try {
-              const response = await fetch(`${API_URL}/groups/settle`, {
+              const response = await apiFetch(`/groups/settle`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@/context/auth";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
-import { API_URL } from "../../../constants/api";
+import { apiFetch } from "@/lib/apiClient";
 
 export default function CreateGroupScreen() {
   const { user } = useUser();
@@ -32,7 +32,7 @@ export default function CreateGroupScreen() {
     try {
       const userName = user.fullName || user.firstName || user.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "User";
       
-      const response = await fetch(`${API_URL}/groups`, {
+      const response = await apiFetch(`/groups`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

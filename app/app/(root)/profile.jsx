@@ -1,10 +1,10 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@/context/auth";
 import { useRouter } from "expo-router";
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
-import { API_URL } from "../../constants/api";
+import { apiFetch } from "@/lib/apiClient";
 
 const formatSince = (value) => {
   if (!value) return "";
@@ -47,7 +47,7 @@ export default function ProfileScreen() {
 
       // Update user name in backend database (groups, expenses, etc.)
       try {
-        const response = await fetch(`${API_URL}/users/profile`, {
+        const response = await apiFetch(`/users/profile`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",

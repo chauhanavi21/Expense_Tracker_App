@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@/context/auth";
 import { Redirect } from "expo-router";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";

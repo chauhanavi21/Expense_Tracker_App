@@ -14,7 +14,7 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
-import { API_URL } from "../../../constants/api";
+import { apiFetch } from "@/lib/apiClient";
 import PageLoader from "../../../components/PageLoader";
 
 export default function ShareGroupScreen() {
@@ -29,7 +29,7 @@ export default function ShareGroupScreen() {
 
   const loadGroup = async () => {
     try {
-      const response = await fetch(`${API_URL}/groups/${groupId}`);
+      const response = await apiFetch(`/groups/${groupId}`);
       const data = await response.json();
       setGroup(data);
     } catch (error) {

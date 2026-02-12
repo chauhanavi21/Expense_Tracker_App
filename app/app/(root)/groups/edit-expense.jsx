@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@/context/auth";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
-import { API_URL } from "../../../constants/api";
+import { apiFetch } from "@/lib/apiClient";
 import PageLoader from "../../../components/PageLoader";
 
 const CATEGORIES = [
@@ -51,15 +51,15 @@ export default function EditGroupExpenseScreen() {
   const loadExpenseData = async () => {
     try {
       // Load members
-      const membersRes = await fetch(`${API_URL}/groups/${groupId}/members`);
+      const membersRes = await apiFetch(`/groups/${groupId}/members`);
       const membersData = await membersRes.json();
       setMembers(membersRes.ok && Array.isArray(membersData) ? membersData : []);
 
       // Load expense details
-      const expenseRes = await fetch(`${API_URL}/groups/${groupId}/expenses`);
+      const expenseRes = await apiFetch(`/groups/${groupId}/expenses`);
       const expensesData = await expenseRes.json();
       const expensesList = expenseRes.ok && Array.isArray(expensesData) ? expensesData : [];
-      const expenseDetail = expensesList.find((e) => e.id === parseInt(expenseId));
+      const expenseDetail = expensesList.find((e) => String(e.id) === String(expenseId));
 
       if (!expenseDetail) {
         Alert.alert("Error", "Expense not found");
@@ -75,7 +75,7 @@ export default function EditGroupExpenseScreen() {
       }
 
       // Load splits
-      const splitsRes = await fetch(`${API_URL}/groups/expenses/${expenseId}/splits`);
+      const splitsRes = await apiFetch(`/groups/expenses/${expenseId}/splits?groupId=${encodeURIComponent(String(groupId))}`);
       const splitsJson = await splitsRes.json();
       const splitsData = splitsRes.ok && Array.isArray(splitsJson) ? splitsJson : [];
 
@@ -188,14 +188,16 @@ export default function EditGroupExpenseScreen() {
 
     setIsSaving(true);
     try {
-      const response = await fetch(`${API_URL}/groups/expenses/${expenseId}`, {
+      const response = await apiFetch(`/groups/expenses/${expenseId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          groupId: String(groupId),
           description: description.trim(),
           amount: parseFloat(amount),
           category: selectedCategory,
           splits,
+          userId: user?.id,
         }),
       });
 

@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useUser } from "@/context/auth";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
-import { API_URL } from "../../../constants/api";
+import { apiFetch } from "@/lib/apiClient";
 import PageLoader from "../../../components/PageLoader";
 
 export default function GroupsScreen() {
@@ -27,7 +27,7 @@ export default function GroupsScreen() {
   const loadGroups = async () => {
     if (!user?.id) return;
     try {
-      const response = await fetch(`${API_URL}/groups/user/${user.id}`);
+      const response = await apiFetch(`/groups/user/${user.id}`);
       const data = await response.json();
       setGroups(data);
     } catch (error) {
