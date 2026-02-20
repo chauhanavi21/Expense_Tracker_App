@@ -85,7 +85,7 @@ import {
     };
   
     const onDateChange = (event, selectedDate) => {
-      setShowDatePicker(Platform.OS === 'ios');
+      setShowDatePicker(false);
       if (selectedDate) {
         setDate(selectedDate);
       }
@@ -99,8 +99,8 @@ import {
     return (
       <KeyboardAvoidingView 
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
       >
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -164,7 +164,7 @@ import {
               placeholderTextColor={COLORS.textLight}
               value={amount}
               onChangeText={setAmount}
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
             />
           </View>
           <View style={styles.inputContainer}>
@@ -180,6 +180,7 @@ import {
               placeholderTextColor={COLORS.textLight}
               value={title}
               onChangeText={setTitle}
+              returnKeyType="done"
             />
           </View>
 
@@ -190,7 +191,7 @@ import {
             style={styles.datePickerButton}
             onPress={() => setShowDatePicker(true)}
           >
-            <Ionicons name="calendar" size={22} color={COLORS.textLight} style={styles.inputIcon} />
+            <Ionicons name="calendar" size={22} color={COLORS.primary} style={styles.inputIcon} />
             <Text style={styles.datePickerText}>{formatDisplayDate(date)}</Text>
             <Ionicons name="chevron-down" size={20} color={COLORS.textLight} />
           </TouchableOpacity>

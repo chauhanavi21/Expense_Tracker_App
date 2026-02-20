@@ -3,7 +3,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { styles } from "../assets/styles/home.styles";
 import { COLORS } from "../constants/colors";
 import { formatDate } from "../lib/utils";
-import { useRouter } from "expo-router";
 
 const CATEGORY_ICONS = {
   "Food & Drinks": "fast-food",
@@ -15,21 +14,16 @@ const CATEGORY_ICONS = {
   Other: "ellipsis-horizontal",
 };
 
-export const TransactionItem = ({ item, onDelete }) => {
+export const TransactionItem = ({ item, onDelete, onPress }) => {
   const isIncome = parseFloat(item.amount) > 0;
   const iconName = CATEGORY_ICONS[item.category] || "pricetag-outline";
-  const router = useRouter();
-
-  const handlePress = () => {
-    router.push({
-      pathname: "/transaction-detail",
-      params: { transaction: JSON.stringify(item) }
-    });
-  };
 
   return (
     <View style={styles.transactionCard} key={item.id}>
-      <TouchableOpacity style={styles.transactionContent} onPress={handlePress}>
+      <TouchableOpacity 
+        style={styles.transactionContent} 
+        onPress={() => onPress && onPress(item)}
+      >
         <View style={styles.categoryIconContainer}>
           <Ionicons name={iconName} size={22} color={isIncome ? COLORS.income : COLORS.expense} />
         </View>

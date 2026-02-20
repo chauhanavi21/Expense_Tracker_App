@@ -82,8 +82,8 @@ export const styles = StyleSheet.create({
   amountContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.primary,
     paddingBottom: 16,
     marginBottom: 20,
   },
@@ -165,7 +165,7 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContentContainer: {
-    flexGrow: 1,
+    paddingBottom: 40,
   },
   datePickerButton: {
     flexDirection: "row",
@@ -182,6 +182,7 @@ export const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     color: COLORS.text,
+    fontWeight: "500",
   },
   updateButton: {
     flexDirection: "row",

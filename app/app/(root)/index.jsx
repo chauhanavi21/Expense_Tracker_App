@@ -10,11 +10,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { BalanceCard } from "../../components/BalanceCard";
 import { TransactionItem } from "../../components/TransactionItem";
 import NoTransactionsFound from "../../components/NoTransactionsFound";
+import { TransactionDetailModal } from "../../components/TransactionDetailModal";
 
 export default function Page() {
   const { user } = useUser();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   const userId = user?.id;
   const { transactions, summary, isLoading, loadData, deleteTransaction } = useTransactions(userId);
@@ -43,6 +46,20 @@ export default function Page() {
       { text: "Cancel", style: "cancel" },
       { text: "Delete", style: "destructive", onPress: () => deleteTransaction(id) },
     ]);
+  };
+
+  const handleTransactionPress = (transaction) => {
+    setSelectedTransaction(transaction);
+    setShowDetailModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowDetailModal(false);
+    setSelectedTransaction(null);
+  };
+
+  const handleUpdateSuccess = () => {
+    loadData();
   };
 
   if (isLoading && !refreshing) return <PageLoader />;
@@ -92,10 +109,23 @@ export default function Page() {
         style={styles.transactionsList}
         contentContainerStyle={styles.transactionsListContent}
         data={transactions}
-        renderItem={({ item }) => <TransactionItem item={item} onDelete={handleDelete} />}
+        renderItem={({ item }) => (
+          <TransactionItem 
+            item={item} 
+            onDelete={handleDelete}
+            onPress={handleTransactionPress}
+          />
+        )}
         ListEmptyComponent={<NoTransactionsFound />}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      />
+
+      <TransactionDetailModal
+        visible={showDetailModal}
+        transaction={selectedTransaction}
+        onClose={handleCloseModal}
+        onUpdate={handleUpdateSuccess}
       />
     </View>
   );
