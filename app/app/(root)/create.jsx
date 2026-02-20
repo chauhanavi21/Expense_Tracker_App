@@ -4,8 +4,10 @@ import {
     Alert,
     TouchableOpacity,
     TextInput,
-    ActivityIndicatorBase,
     ActivityIndicator,
+    KeyboardAvoidingView,
+    ScrollView,
+    Platform,
   } from "react-native";
   import { useRouter } from "expo-router";
   import { useUser } from "@/context/auth";
@@ -14,6 +16,7 @@ import {
   import { styles } from "../../assets/styles/create.styles";
   import { COLORS } from "../../constants/colors";
   import { Ionicons } from "@expo/vector-icons";
+  import DateTimePicker from "@react-native-community/datetimepicker";
   
   const CATEGORIES = [
     { id: "food", name: "Food & Drinks", icon: "fast-food" },
@@ -33,6 +36,8 @@ import {
     const [selectedCategory, setSelectedCategory] = useState("");
     const [isExpense, setIsExpense] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
+    const [date, setDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
   
     const handleCreate = async () => {
       if (!title.trim()) return Alert.alert("Error", "Please enter a transaction title");
@@ -59,6 +64,7 @@ import {
             title,
             amount: formattedAmount,
             category: selectedCategory,
+            date: date.toISOString(),
           }),
         });
   
@@ -78,8 +84,24 @@ import {
       }
     };
   
+    const onDateChange = (event, selectedDate) => {
+      setShowDatePicker(Platform.OS === 'ios');
+      if (selectedDate) {
+        setDate(selectedDate);
+      }
+    };
+
+    const formatDisplayDate = (date) => {
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return date.toLocaleDateString('en-US', options);
+    };
+
     return (
-      <View style={styles.container}>
+      <KeyboardAvoidingView 
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={COLORS.text} />
@@ -95,6 +117,12 @@ import {
           </TouchableOpacity>
         </View>
   
+        <ScrollView 
+          style={styles.scrollContent}
+          contentContainerStyle={styles.scrollContentContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.card}>
           <View style={styles.typeSelector}>
             <TouchableOpacity
@@ -154,6 +182,29 @@ import {
               onChangeText={setTitle}
             />
           </View>
+
+          <Text style={styles.sectionTitle}>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.text} /> Date
+          </Text>
+          <TouchableOpacity 
+            style={styles.datePickerButton}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Ionicons name="calendar" size={22} color={COLORS.textLight} style={styles.inputIcon} />
+            <Text style={styles.datePickerText}>{formatDisplayDate(date)}</Text>
+            <Ionicons name="chevron-down" size={20} color={COLORS.textLight} />
+          </TouchableOpacity>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onDateChange}
+              maximumDate={new Date()}
+            />
+          )}
+
           <Text style={styles.sectionTitle}>
             <Ionicons name="pricetag-outline" size={16} color={COLORS.text} /> Category
           </Text>
@@ -185,12 +236,13 @@ import {
             ))}
           </View>
         </View>
+        </ScrollView>
         {isLoading && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={COLORS.primary} />
           </View>
         )}
-      </View>
+      </KeyboardAvoidingView>
     );
   };
   export default CreateScreen;

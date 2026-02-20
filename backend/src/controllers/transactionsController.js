@@ -18,7 +18,7 @@ function getDb() {
 
 export async function createTransaction(req, res) {
     try {
-      const { title, amount, category, user_id } = req.body;
+      const { title, amount, category, user_id, date } = req.body;
   
       if (!title || !user_id || !category || amount === undefined) {
         return res.status(400).json({ message: "All fields are required" });
@@ -38,13 +38,16 @@ export async function createTransaction(req, res) {
       const txnRef = db.collection("users").doc(String(user_id)).collection("transactions").doc();
       const summaryRef = db.collection("users").doc(String(user_id)).collection("meta").doc("transactionSummary");
 
+      // Use provided date or current timestamp
+      const transactionDate = date ? admin.firestore.Timestamp.fromDate(new Date(date)) : admin.firestore.FieldValue.serverTimestamp();
+
       await db.runTransaction(async (tx) => {
         tx.create(txnRef, {
           user_id: String(user_id),
           title: String(title).trim(),
           category: String(category).trim(),
           amountCents,
-          created_at: admin.firestore.FieldValue.serverTimestamp(),
+          created_at: transactionDate,
         });
 
         const inc = admin.firestore.FieldValue.increment;

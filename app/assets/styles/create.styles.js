@@ -161,4 +161,47 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  scrollContent: {
+    flex: 1,
+  },
+  scrollContentContainer: {
+    flexGrow: 1,
+  },
+  datePickerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+    backgroundColor: COLORS.white,
+  },
+  datePickerText: {
+    flex: 1,
+    padding: 12,
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  updateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 20,
+    gap: 8,
+  },
+  updateButtonDisabled: {
+    opacity: 0.5,
+  },
+  updateButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  deleteIconButton: {
+    padding: 5,
+  },
 });
