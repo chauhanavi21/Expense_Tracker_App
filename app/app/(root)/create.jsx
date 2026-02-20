@@ -85,7 +85,14 @@ import {
     };
   
     const onDateChange = (event, selectedDate) => {
-      setShowDatePicker(false);
+      if (Platform.OS === "android") {
+        setShowDatePicker(false);
+      }
+
+      if (event?.type === "dismissed") {
+        return;
+      }
+
       if (selectedDate) {
         setDate(selectedDate);
       }
@@ -189,7 +196,7 @@ import {
           </Text>
           <TouchableOpacity 
             style={styles.datePickerButton}
-            onPress={() => setShowDatePicker(true)}
+            onPress={() => setShowDatePicker((prev) => !prev)}
           >
             <Ionicons name="calendar" size={22} color={COLORS.primary} style={styles.inputIcon} />
             <Text style={styles.datePickerText}>{formatDisplayDate(date)}</Text>
@@ -200,9 +207,12 @@ import {
             <DateTimePicker
               value={date}
               mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              display={Platform.OS === "ios" ? "inline" : "default"}
               onChange={onDateChange}
               maximumDate={new Date()}
+              themeVariant="light"
+              accentColor={COLORS.primary}
+              textColor={COLORS.text}
             />
           )}
 

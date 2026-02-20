@@ -121,16 +121,16 @@ export default function ChartsScreen() {
       const response = await apiFetch(`/transactions/${user.id}`);
       if (!response.ok) throw new Error("Failed to fetch transactions");
       const data = await response.json();
-      // Filter expenses: either type === "expense" OR negative amount (expense is negative in our app)
-      const expenses = Array.isArray(data) 
+      const transactions = Array.isArray(data)
         ? data.filter((t) => {
-            if (t.type === "expense") return true;
-            // If no type field, check if amount is negative (expense)
-            const amount = parseFloat(t.amount || 0);
-            return amount < 0;
+            const amount = parseFloat(t?.amount ?? 0);
+            const rawDate = t?.created_at ?? t?.date ?? t?.createdAt;
+            const parsedDate = rawDate ? new Date(rawDate) : null;
+
+            return Number.isFinite(amount) && parsedDate && !Number.isNaN(parsedDate.getTime());
           })
         : [];
-      setPersonalTransactions(expenses);
+      setPersonalTransactions(transactions);
     } catch (err) {
       console.error("Error loading personal data:", err);
       throw err;
@@ -252,7 +252,9 @@ export default function ChartsScreen() {
             {/* Category Distribution */}
             {chartData.categoryData.length > 0 ? (
               <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Expenses by Category</Text>
+                <Text style={styles.chartTitle}>
+                  {mode === "personal" ? "Transactions by Category" : "Expenses by Category"}
+                </Text>
                 <CategoryDonutChart data={chartData.categoryData} />
                 <CategoryLegend data={chartData.categoryData} />
               </View>
@@ -264,11 +266,13 @@ export default function ChartsScreen() {
                   color={COLORS.textLight}
                 />
                 <Text style={styles.emptyCardText}>
-                  No expense data for this period
+                  {mode === "personal"
+                    ? "No transaction data for this period"
+                    : "No expense data for this period"}
                 </Text>
                 <Text style={styles.emptyCardSubtext}>
                   {mode === "personal" 
-                    ? "Add some personal expenses to see charts"
+                    ? "Add some personal transactions to see charts"
                     : "Add expenses to this group to see charts"}
                 </Text>
               </View>
@@ -278,7 +282,7 @@ export default function ChartsScreen() {
             {chartData.timeSeriesData.length > 0 && (
               <View style={styles.chartCard}>
                 <Text style={styles.chartTitle}>
-                  Expenses Over Time ({capitalize(timeframe)})
+                  Amount Over Time ({capitalize(timeframe)})
                 </Text>
                 <TimeBarChart
                   data={chartData.timeSeriesData}
@@ -292,13 +296,13 @@ export default function ChartsScreen() {
               <View style={styles.statsCard}>
                 <Text style={styles.statsTitle}>Summary</Text>
                 <View style={styles.statsRow}>
-                  <Text style={styles.statsLabel}>Total Expenses</Text>
+                  <Text style={styles.statsLabel}>Total Amount</Text>
                   <Text style={styles.statsValue}>
                     ${chartData.total.toFixed(2)}
                   </Text>
                 </View>
                 <View style={styles.statsRow}>
-                  <Text style={styles.statsLabel}>Average</Text>
+                  <Text style={styles.statsLabel}>Average Amount</Text>
                   <Text style={styles.statsValue}>
                     ${chartData.average.toFixed(2)}
                   </Text>
@@ -500,20 +504,22 @@ function processChartData(rawData, timeframe) {
   }
 
   const now = new Date();
-  const nowTime = now.getTime();
-  
-  // Pre-calculate timeframe boundaries (in milliseconds)
-  let startTime;
+  const endDate = new Date(now);
+  endDate.setHours(23, 59, 59, 999);
+
+  const startDate = new Date(now);
   if (timeframe === "day") {
-    // Last 24 hours from now
-    startTime = nowTime - 24 * 60 * 60 * 1000;
+    startDate.setHours(0, 0, 0, 0);
   } else if (timeframe === "week") {
-    // Last 7 days
-    startTime = nowTime - 7 * 24 * 60 * 60 * 1000;
+    startDate.setDate(startDate.getDate() - 6);
+    startDate.setHours(0, 0, 0, 0);
   } else {
-    // Last 30 days
-    startTime = nowTime - 30 * 24 * 60 * 60 * 1000;
+    startDate.setDate(1);
+    startDate.setHours(0, 0, 0, 0);
   }
+
+  const startTime = startDate.getTime();
+  const endTime = endDate.getTime();
 
   // Single pass through data for filtering and aggregation (O(n) instead of multiple passes)
   const categoryMap = {};
@@ -521,11 +527,15 @@ function processChartData(rawData, timeframe) {
   let count = 0;
 
   rawData.forEach((item) => {
-    const itemDate = new Date(item.created_at);
+    const rawDate = item.created_at ?? item.date ?? item.createdAt;
+    if (!rawDate) return;
+
+    const itemDate = new Date(rawDate);
+    if (Number.isNaN(itemDate.getTime())) return;
+
     const itemTime = itemDate.getTime();
     
-    // Filter by timeframe - compare timestamps
-    if (itemTime < startTime) return;
+    if (itemTime < startTime || itemTime > endTime) return;
     
     count++;
     const amount = Math.abs(parseFloat(item.amount || 0));
@@ -539,20 +549,18 @@ function processChartData(rawData, timeframe) {
     if (timeframe === "day") {
       // Group by hour for last 24 hours
       const hour = itemDate.getHours();
-      sortKey = hour;
-      key = `${hour}:00`;
+      sortKey = itemDate.getTime();
+      key = `${itemDate.toISOString().slice(0, 10)}-${hour}`;
     } else if (timeframe === "week") {
-      // Group by day for last 7 days
       const dayDate = new Date(itemDate);
       dayDate.setHours(0, 0, 0, 0);
       sortKey = dayDate.getTime();
-      key = itemDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      key = dayDate.toISOString().slice(0, 10);
     } else {
-      // Group by day for last 30 days
       const dayDate = new Date(itemDate);
       dayDate.setHours(0, 0, 0, 0);
       sortKey = dayDate.getTime();
-      key = itemDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      key = dayDate.toISOString().slice(0, 10);
     }
     
     if (!timeMap[key]) {
@@ -575,8 +583,24 @@ function processChartData(rawData, timeframe) {
   const timeSeriesData = Object.entries(timeMap)
     .map(([label, data]) => ({ label, total: data.total, sortKey: data.sortKey }))
     .sort((a, b) => a.sortKey - b.sortKey)
-    .slice(timeframe === "day" ? -24 : timeframe === "week" ? -7 : -30)
-    .map(({ label, total }) => ({ label, total }));
+    .slice(timeframe === "day" ? -24 : timeframe === "week" ? -7 : -31)
+    .map(({ label, total, sortKey }) => {
+      if (timeframe === "day") {
+        const date = new Date(sortKey);
+        return {
+          label: `${String(date.getHours()).padStart(2, "0")}:00`,
+          total,
+        };
+      }
+
+      return {
+        label: new Date(sortKey).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        total,
+      };
+    });
 
   return {
     categoryData,

@@ -72,6 +72,7 @@ export const TransactionDetailModal = ({ visible, transaction, onClose, onUpdate
           title,
           amount: formattedAmount,
           category: selectedCategory,
+          date: date.toISOString(),
         }),
       });
 
@@ -81,7 +82,9 @@ export const TransactionDetailModal = ({ visible, transaction, onClose, onUpdate
       }
 
       Alert.alert("Success", "Transaction updated successfully");
-      onUpdate();
+      if (onUpdate) {
+        await onUpdate();
+      }
       onClose();
     } catch (error) {
       Alert.alert("Error", error.message || "Failed to update transaction");
@@ -110,7 +113,9 @@ export const TransactionDetailModal = ({ visible, transaction, onClose, onUpdate
               if (!response.ok) throw new Error("Failed to delete transaction");
 
               Alert.alert("Success", "Transaction deleted successfully");
-              onUpdate();
+              if (onUpdate) {
+                await onUpdate();
+              }
               onClose();
             } catch (error) {
               Alert.alert("Error", error.message || "Failed to delete transaction");
@@ -125,7 +130,14 @@ export const TransactionDetailModal = ({ visible, transaction, onClose, onUpdate
   };
 
   const onDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
+    if (Platform.OS === "android") {
+      setShowDatePicker(false);
+    }
+
+    if (event?.type === "dismissed") {
+      return;
+    }
+
     if (selectedDate) {
       setDate(selectedDate);
     }
@@ -238,7 +250,7 @@ export const TransactionDetailModal = ({ visible, transaction, onClose, onUpdate
             </Text>
             <TouchableOpacity 
               style={styles.datePickerButton}
-              onPress={() => setShowDatePicker(true)}
+              onPress={() => setShowDatePicker((prev) => !prev)}
             >
               <Ionicons name="calendar" size={22} color={COLORS.primary} style={styles.inputIcon} />
               <Text style={styles.datePickerText}>{formatDisplayDate(date)}</Text>
@@ -249,9 +261,12 @@ export const TransactionDetailModal = ({ visible, transaction, onClose, onUpdate
               <DateTimePicker
                 value={date}
                 mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                display={Platform.OS === "ios" ? "inline" : "default"}
                 onChange={onDateChange}
                 maximumDate={new Date()}
+                themeVariant="light"
+                accentColor={COLORS.primary}
+                textColor={COLORS.text}
               />
             )}
 

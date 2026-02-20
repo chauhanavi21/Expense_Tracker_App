@@ -58,8 +58,8 @@ export default function Page() {
     setSelectedTransaction(null);
   };
 
-  const handleUpdateSuccess = () => {
-    loadData();
+  const handleUpdateSuccess = async () => {
+    await loadData();
   };
 
   if (isLoading && !refreshing) return <PageLoader />;
