@@ -12,22 +12,21 @@ const firebaseConfig = {
   appId: "1:563758913751:web:ea3df3d4b2f61f5be6f892",
 };
 
+// Initialize Firebase app
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
+// Initialize Firebase auth with persistence
 let auth;
 try {
   auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage),
   });
-} catch (err) {
-  // If already initialized (e.g., Fast Refresh), use existing instance
-  if (err.code === 'auth/already-initialized') {
-    auth = getAuth(app);
-  } else {
-    throw err;
-  }
+} catch (error) {
+  // If auth is already initialized (e.g., during Fast Refresh), get the existing instance
+  auth = getAuth(app);
 }
 
+// Initialize Firestore
 const db = getFirestore(app);
 
 export { app, auth, db };

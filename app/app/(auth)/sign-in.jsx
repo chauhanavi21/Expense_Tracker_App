@@ -1,5 +1,6 @@
 import { Link, useRouter } from "expo-router";
-import { Text, TextInput, TouchableOpacity, View, Image } from "react-native";
+import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Image } from "expo-image";
 import { useState } from "react";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { styles } from "../../assets/styles/auth.styles";
@@ -39,7 +40,7 @@ export default function Page() {
       extraScrollHeight={30}
     >
       <View style={styles.container}>
-        <Image source={require("../../assets/images/revenue-i4.png")} style={styles.illustration} />
+        <Image source={require("../../assets/images/revenue-i4.png")} style={styles.illustration} contentFit="contain" />
         <Text style={styles.title}>Welcome Back</Text>
         {error ? (
           <View style={styles.errorBox}>
