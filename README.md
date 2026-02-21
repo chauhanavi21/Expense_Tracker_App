@@ -174,8 +174,15 @@ Then choose:
 - `GET /api/transactions/:userId` - Get user's transactions
 - `GET /api/transactions/summary/:userId` - Get income/expense summary
 - `POST /api/transactions` - Create new transaction
+- `PUT /api/transactions/:id` - Update an existing transaction
 - `DELETE /api/transactions/:id` - Delete transaction
 - `DELETE /api/transactions/user/:userId` - Delete all user transactions
+
+#### Transactions API Notes
+- `amount` must be a non-zero number (positive = income, negative = expense).
+- `date` is optional on create/update; when omitted on create, server timestamp is used.
+- `date` cannot be invalid or in the future.
+- Summary values are stored and computed in cents (`balanceCents`, `incomeCents`, `expensesCents`) for precision.
 
 ### Groups
 - `POST /api/groups` - Create new group
